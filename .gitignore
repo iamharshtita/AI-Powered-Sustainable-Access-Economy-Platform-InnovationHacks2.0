@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+
+# AWS CDK
+cdk.out/
+cdk.context.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+
+# Build
+dist/
+build/
+
+# Kiro
+.kiro/
