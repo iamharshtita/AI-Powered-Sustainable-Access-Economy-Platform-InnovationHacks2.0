@@ -26,12 +26,12 @@ logger.setLevel(logging.INFO)
 AUDIO_BUCKET = os.environ.get("AUDIO_BUCKET", "")
 ELEVENLABS_SECRET_ARN = os.environ.get("ELEVENLABS_SECRET_ARN", "")
 
+# Cached API key (per Lambda cold-start)
+_api_key_cache: str | None = None
+
 DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # ElevenLabs default voice
 ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 ELEVENLABS_STT_URL = "https://api.elevenlabs.io/v1/speech-to-text"
-
-# Cached API key (per Lambda cold-start)
-_api_key_cache: str | None = None
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:

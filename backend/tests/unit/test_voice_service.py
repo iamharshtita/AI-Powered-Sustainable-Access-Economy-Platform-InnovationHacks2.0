@@ -88,7 +88,6 @@ class TestRouter:
     def test_tts_route_dispatches(self, mock_boto3):
         mock_boto3.client.return_value = _mock_secrets_client()
         event = _api_event("POST", "/api/voice/tts", {"text": "hello"})
-        # Will fail at ElevenLabs call but should not 404
         with patch("voice_service.handler._get_cached_audio", return_value=None), \
              patch("voice_service.handler._call_elevenlabs_tts", return_value=b"audio"):
             resp = handler(event, None)

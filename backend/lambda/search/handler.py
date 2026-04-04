@@ -26,7 +26,7 @@ ITEMS_TABLE = os.environ.get("ITEMS_TABLE", "")
 VOICE_SERVICE_URL = os.environ.get("VOICE_SERVICE_URL", "")
 
 # Fields every search result must include
-RESULT_FIELDS = ("item_id", "category", "condition", "pricing", "status", "title", "description")
+RESULT_FIELDS = ("item_id", "category", "condition", "pricing", "status", "title", "description", "latitude", "longitude", "location")
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:

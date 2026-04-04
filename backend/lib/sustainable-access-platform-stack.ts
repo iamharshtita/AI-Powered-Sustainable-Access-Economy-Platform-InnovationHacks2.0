@@ -24,11 +24,6 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
   public readonly apiRoot: apigateway.Resource;
   public readonly authorizer: apigateway.IAuthorizer;
 
-  /** Secrets */
-  public readonly elevenLabsSecret: secretsmanager.Secret;
-  public readonly aiServiceSecret: secretsmanager.Secret;
-  public readonly auth0Secret: secretsmanager.Secret;
-
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -255,30 +250,17 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
       },
     });
 
-    // Auth0 JWT authorizer Lambda — validates JWT tokens from Auth0.
-    // The actual JWKS validation logic will be implemented in a later task.
-    const authorizerFn = new cdk.aws_lambda.Function(this, "AuthorizerFn", {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
-      handler: "index.handler",
-      code: cdk.aws_lambda.Code.fromInline(
-        [
-          "def handler(event, context):",
-          '    """Placeholder JWT authorizer — will be replaced with Auth0 JWKS validation."""',
-          "    return {",
-          "        'principalId': 'user',",
-          "        'policyDocument': {",
-          "            'Version': '2012-10-17',",
-          "            'Statement': [{",
-          "                'Action': 'execute-api:Invoke',",
-          "                'Effect': 'Allow',",
-          "                'Resource': event.get('methodArn', '*'),",
-          "            }],",
-          "        },",
-          "    }",
-        ].join("\n")
-      ),
+    // Auth0 JWT authorizer Lambda — validates JWT tokens using Auth0 JWKS (RS256).
+    const authorizerFn = new lambda.Function(this, "AuthorizerFn", {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: "authorizer/handler.handler",
+      code: lambda.Code.fromAsset("lambda"),
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
+      environment: {
+        AUTH0_DOMAIN: "dev-ld7wncxpjhac4pae.us.auth0.com",
+        AUTH0_AUDIENCE: "https://sustainable-access-platform-api",
+      },
     });
 
     const auth0Authorizer = new apigateway.TokenAuthorizer(
@@ -311,48 +293,12 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
     );
 
     // ---------------------------------------------------------------
-    // 1.4 — Secrets Manager entries for external API keys
+    // ElevenLabs API Key — stored in Secrets Manager (set manually after deploy)
     // ---------------------------------------------------------------
 
-    this.elevenLabsSecret = new secretsmanager.Secret(
-      this,
-      "ElevenLabsApiKey",
-      {
-        secretName: `${id}/elevenlabs-api-key`,
-        description: "ElevenLabs API key for voice synthesis and transcription",
-        generateSecretString: {
-          secretStringTemplate: JSON.stringify({ api_key: "PLACEHOLDER" }),
-          generateStringKey: "generated",
-        },
-      }
-    );
-
-    this.aiServiceSecret = new secretsmanager.Secret(
-      this,
-      "AiServiceApiKey",
-      {
-        secretName: `${id}/ai-service-api-key`,
-        description:
-          "API key for AI/LLM service (AWS Bedrock or OpenAI) used by Decision Engine",
-        generateSecretString: {
-          secretStringTemplate: JSON.stringify({ api_key: "PLACEHOLDER" }),
-          generateStringKey: "generated",
-        },
-      }
-    );
-
-    this.auth0Secret = new secretsmanager.Secret(this, "Auth0Credentials", {
-      secretName: `${id}/auth0-credentials`,
-      description: "Auth0 domain, client ID, client secret, and audience",
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify({
-          domain: "PLACEHOLDER",
-          client_id: "PLACEHOLDER",
-          client_secret: "PLACEHOLDER",
-          audience: "PLACEHOLDER",
-        }),
-        generateStringKey: "generated",
-      },
+    const elevenLabsSecret = new secretsmanager.Secret(this, "ElevenLabsApiKey", {
+      secretName: `${id}/elevenlabs-api-key`,
+      description: "ElevenLabs API key — set this manually after deploy via AWS CLI or console",
     });
 
     // ---------------------------------------------------------------
@@ -367,14 +313,11 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         USERS_TABLE: this.usersTable.tableName,
-        AUTH0_SECRET_ARN: this.auth0Secret.secretArn,
       },
     });
 
     // Least-privilege: read/write on Users table only
     this.usersTable.grantReadWriteData(authTrustFn);
-    // Read access to Auth0 credentials secret
-    this.auth0Secret.grantRead(authTrustFn);
 
     const authTrustIntegration = new apigateway.LambdaIntegration(authTrustFn);
 
@@ -493,14 +436,14 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         AUDIO_BUCKET: this.audioAssetsBucket.bucketName,
-        ELEVENLABS_SECRET_ARN: this.elevenLabsSecret.secretArn,
+        ELEVENLABS_SECRET_ARN: elevenLabsSecret.secretArn,
       },
     });
 
     // Least-privilege: S3 read/write on audio-assets bucket
     this.audioAssetsBucket.grantReadWrite(voiceServiceFn);
     // Secrets Manager read for ElevenLabs API key
-    this.elevenLabsSecret.grantRead(voiceServiceFn);
+    elevenLabsSecret.grantRead(voiceServiceFn);
 
     const voiceIntegration = new apigateway.LambdaIntegration(voiceServiceFn);
 
@@ -533,7 +476,7 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
         USERS_TABLE: this.usersTable.tableName,
         ITEMS_TABLE: this.itemsTable.tableName,
         TRANSACTIONS_TABLE: this.transactionsTable.tableName,
-        AI_SERVICE_SECRET_ARN: this.aiServiceSecret.secretArn,
+        BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0",
       },
     });
 
@@ -541,8 +484,13 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
     this.usersTable.grantReadData(decisionEngineFn);
     this.itemsTable.grantReadData(decisionEngineFn);
     this.transactionsTable.grantReadData(decisionEngineFn);
-    // Secrets Manager read for AI service API key
-    this.aiServiceSecret.grantRead(decisionEngineFn);
+    // Bedrock invoke access for Nova Lite
+    decisionEngineFn.addToRolePolicy(
+      new cdk.aws_iam.PolicyStatement({
+        actions: ["bedrock:InvokeModel", "bedrock:Converse"],
+        resources: ["arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0"],
+      })
+    );
 
     const decisionEngineIntegration = new apigateway.LambdaIntegration(
       decisionEngineFn
@@ -732,6 +680,60 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
     // GET /api/co2/cumulative — requires authorizer
     const co2CumulativeResource = co2Resource.addResource("cumulative");
     co2CumulativeResource.addMethod("GET", co2Integration, {
+      authorizer: this.authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+
+    // ---------------------------------------------------------------
+    // Location Service — Amazon Location Place Index + Lambda
+    // ---------------------------------------------------------------
+
+    const placeIndex = new cdk.aws_location.CfnPlaceIndex(
+      this,
+      "PlatformPlaceIndex",
+      {
+        indexName: `${id}-PlaceIndex`,
+        dataSource: "Esri",
+        description: "Place index for geocoding listing addresses",
+      }
+    );
+
+    const locationServiceFn = new lambda.Function(this, "LocationServiceFn", {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: "location_service/handler.handler",
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: {
+        ITEMS_TABLE: this.itemsTable.tableName,
+        PLACE_INDEX_NAME: placeIndex.indexName!,
+      },
+    });
+
+    // Least-privilege: read Items table, use Location Service Place Index
+    this.itemsTable.grantReadData(locationServiceFn);
+    locationServiceFn.addToRolePolicy(
+      new cdk.aws_iam.PolicyStatement({
+        actions: ["geo:SearchPlaceIndexForText"],
+        resources: [placeIndex.attrArn],
+      })
+    );
+
+    const locationIntegration = new apigateway.LambdaIntegration(
+      locationServiceFn
+    );
+
+    // GET /api/listings/nearby — requires authorizer
+    // Note: /api/listings already exists from listing management, so we add "nearby" under it
+    const nearbyResource = listingsResource.addResource("nearby");
+    nearbyResource.addMethod("GET", locationIntegration, {
+      authorizer: this.authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+
+    // POST /api/geocode — requires authorizer
+    const geocodeResource = this.apiRoot.addResource("geocode");
+    geocodeResource.addMethod("POST", locationIntegration, {
       authorizer: this.authorizer,
       authorizationType: apigateway.AuthorizationType.CUSTOM,
     });

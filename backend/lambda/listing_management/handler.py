@@ -98,6 +98,12 @@ def create_listing(user_id: str, listing_data: dict[str, Any]) -> dict[str, Any]
         "updated_at": now,
     }
 
+    # Store coordinates if provided
+    if listing_data.get("latitude") is not None:
+        item["latitude"] = float(listing_data["latitude"])
+    if listing_data.get("longitude") is not None:
+        item["longitude"] = float(listing_data["longitude"])
+
     table = get_dynamo_table(ITEMS_TABLE)
     table.put_item(Item=item)
 
@@ -141,7 +147,7 @@ def update_listing(user_id: str, item_id: str, updates: dict[str, Any]) -> dict[
         return error_response(ErrorCode.FORBIDDEN, "You can only update your own listings")
 
     # Only allow updating safe fields
-    allowed_fields = {"category", "condition", "title", "description", "pricing", "location"}
+    allowed_fields = {"category", "condition", "title", "description", "pricing", "location", "latitude", "longitude"}
     now = datetime.now(timezone.utc).isoformat()
 
     update_expressions = []
