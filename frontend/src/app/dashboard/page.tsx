@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
   Leaf, DollarSign, PackageOpen, ShoppingBag, TrendingUp,
-  TreePine, Car, Trophy, X, Lightbulb, Sparkles, Loader2
+  TreePine, Car, Trophy, X, Lightbulb, Sparkles, Loader2, LogIn, Sprout
 } from 'lucide-react';
 
 const CATEGORY_COLORS = ['#22c55e', '#06b6d4', '#f59e0b', '#8b5cf6', '#f43f5e', '#ec4899', '#14b8a6', '#6366f1'];
@@ -43,19 +43,28 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ sub?: string; name?: string; email?: string } | null | undefined>(undefined);
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        // Try to get user ID
+        // Check auth first
         let userId = '';
+        let userData = null;
         try {
           const authRes = await fetch('/auth/profile', { credentials: 'same-origin' });
           if (authRes.ok) {
-            const user = await authRes.json();
-            userId = user?.sub || '';
+            userData = await authRes.json();
+            userId = userData?.sub || '';
           }
         } catch {}
+
+        setUser(userData ?? null);
+
+        if (!userData) {
+          setLoading(false);
+          return;
+        }
 
         const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
         const res = await fetch(`/api/dashboard${params}`);
@@ -80,6 +89,65 @@ export default function DashboardPage() {
     );
   }
 
+  // Not signed in state
+  if (user === null) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col items-center text-center max-w-lg mx-auto"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', bounce: 0.4, delay: 0.2 }}
+            className="w-24 h-24 rounded-full bg-gradient-to-br from-leaf/20 to-ocean/15 flex items-center justify-center mb-6"
+          >
+            <LogIn size={36} className="text-leaf-dark" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-earth-100 dark:bg-white/8 text-earth-500 text-xs font-medium mb-4"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-earth-400 animate-pulse" />
+            Not signed in
+          </motion.div>
+
+          <h1 className="text-3xl sm:text-4xl font-bold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200 mb-3">
+            Your Sustainability Dashboard
+          </h1>
+          <p className="text-earth-500 dark:text-earth-400 leading-relaxed mb-8">
+            Sign in to see your personal consumption mirror — track CO₂ saved, items borrowed, smart insights, and your eco score.
+          </p>
+
+          <motion.a
+            href="/auth/login"
+            whileHover={{ scale: 1.05, boxShadow: '0 20px 40px -10px rgba(34, 197, 94, 0.35)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-leaf to-leaf-dark text-white font-bold text-base shadow-lg shadow-leaf/20"
+          >
+            <LogIn size={18} />
+            Sign In to View Dashboard
+          </motion.a>
+
+          <div className="grid grid-cols-3 gap-4 mt-12 w-full opacity-40 pointer-events-none select-none">
+            {['Items Borrowed', 'CO₂ Saved', 'Money Saved'].map((label) => (
+              <div key={label} className="bg-white dark:bg-white/5 rounded-2xl border border-earth-200 dark:border-white/6 p-4 text-center">
+                <p className="text-2xl font-bold text-earth-300">—</p>
+                <p className="text-xs text-earth-400 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   const s = stats || {
     borrow_count: 0, buy_count: 0, co2_saved_kg: 0,
     money_saved: 0, eco_score: 50, trees_equivalent: 0, car_miles_avoided: 0,
@@ -92,6 +160,9 @@ export default function DashboardPage() {
     { label: 'Money Saved', value: s.money_saved, suffix: '', prefix: '$', icon: DollarSign, color: 'text-amber', bg: 'from-amber/10 to-amber/5', borderColor: 'border-amber/15' },
   ];
 
+  // CO2 insight — AI motivational if zero
+  const co2IsZero = s.co2_saved_kg === 0;
+
   const INSIGHTS = [
     {
       icon: Lightbulb,
@@ -100,14 +171,18 @@ export default function DashboardPage() {
       borderColor: 'border-amber/15',
       text: `You've borrowed ${s.borrow_count} items so far. Before buying, why not borrow first to make sure it fits your routine?`,
       cta: 'See borrowing options →',
+      isAI: false,
     },
     {
-      icon: Leaf,
-      color: 'text-leaf-dark',
-      bg: 'bg-leaf/10',
-      borderColor: 'border-leaf/15',
-      text: `Great job! You saved ${s.co2_saved_kg} kg of CO₂ by choosing sustainability. That's like planting ${s.trees_equivalent} trees! 🌿`,
-      cta: '',
+      icon: co2IsZero ? Sprout : Leaf,
+      color: co2IsZero ? 'text-leaf-dark' : 'text-leaf-dark',
+      bg: co2IsZero ? 'bg-leaf/10' : 'bg-leaf/10',
+      borderColor: co2IsZero ? 'border-leaf/15' : 'border-leaf/15',
+      text: co2IsZero
+        ? `🌱 Every journey starts with a single step. Borrow your first item to start saving CO₂ and building your eco impact. You could save over 40 kg this month alone!`
+        : `Great job! You saved ${s.co2_saved_kg} kg of CO₂ by choosing sustainability. That's like planting ${s.trees_equivalent} trees! 🌿`,
+      cta: co2IsZero ? 'Start Borrowing →' : '',
+      isAI: co2IsZero,
     },
   ];
 
@@ -141,10 +216,10 @@ export default function DashboardPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10"
       >
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-[family-name:var(--font-heading)] text-earth">
+          <h1 className="text-3xl sm:text-4xl font-bold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200">
             Consumption Mirror
           </h1>
-          <p className="text-earth-500 text-sm mt-1">Your sustainability journey at a glance</p>
+          <p className="text-earth-500 dark:text-earth-400 text-sm mt-1">Your sustainability journey at a glance</p>
         </div>
 
         {/* Eco Score Ring */}
@@ -166,7 +241,7 @@ export default function DashboardPage() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-bold text-earth">{s.eco_score}</span>
+            <span className="text-xl font-bold text-earth dark:text-earth-200">{s.eco_score}</span>
             <span className="text-[9px] text-earth-400 font-medium">Eco Score</span>
           </div>
         </motion.div>
@@ -184,10 +259,10 @@ export default function DashboardPage() {
             className={`bg-gradient-to-br ${stat.bg} rounded-2xl border ${stat.borderColor} p-5 transition-all`}
           >
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-earth-500">{stat.label}</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400">{stat.label}</p>
               <motion.div
                 whileHover={{ rotate: 15, scale: 1.1 }}
-                className="w-9 h-9 rounded-xl bg-white/80 flex items-center justify-center"
+                className="w-9 h-9 rounded-xl bg-white/80 dark:bg-white/10 flex items-center justify-center"
               >
                 <stat.icon size={18} className={stat.color} />
               </motion.div>
@@ -203,7 +278,7 @@ export default function DashboardPage() {
 
       {/* Smart Insights */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mb-10">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-earth mb-4">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-earth dark:text-earth-200 mb-4">
           <Sparkles size={18} className="text-leaf-dark" />
           Smart Insights
         </h2>
@@ -217,13 +292,19 @@ export default function DashboardPage() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20, height: 0 }}
                   transition={{ delay: 0.6 + i * 0.1 }}
-                  className={`flex items-start gap-3 p-4 rounded-xl border ${insight.borderColor} bg-white`}
+                  className={`flex items-start gap-3 p-4 rounded-xl border ${insight.borderColor} bg-white dark:bg-white/5`}
                 >
                   <div className={`w-9 h-9 rounded-full ${insight.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                     <insight.icon size={16} className={insight.color} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-earth-600 leading-relaxed">{insight.text}</p>
+                    {insight.isAI && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Sparkles size={12} className="text-leaf-dark" />
+                        <span className="text-xs font-bold text-leaf-dark">AI Insight</span>
+                      </div>
+                    )}
+                    <p className="text-sm text-earth-600 dark:text-earth-400 leading-relaxed">{insight.text}</p>
                     {insight.cta && (
                       <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-leaf-dark mt-2 hover:underline">
                         {insight.cta}
@@ -232,7 +313,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setDismissedInsights((prev) => [...prev, i])}
-                    className="text-earth-300 hover:text-earth-500 transition-colors shrink-0"
+                    className="text-earth-300 hover:text-earth-500 dark:hover:text-earth-200 transition-colors shrink-0"
                   >
                     <X size={16} />
                   </button>
@@ -245,15 +326,15 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-        {/* CO₂ Saved by Category — from DB */}
+        {/* CO₂ Saved by Category */}
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl border border-earth-200/60 p-6 shadow-sm"
+          className="bg-white dark:bg-[#0f1c33] rounded-2xl border border-earth-200/60 dark:border-white/6 p-6 shadow-sm"
         >
-          <h2 className="text-lg font-bold text-earth mb-1">CO₂ Saved by Category</h2>
+          <h2 className="text-lg font-bold text-earth dark:text-earth-200 mb-1">CO₂ Saved by Category</h2>
           <p className="text-sm text-earth-400 mb-6">Top impact categories from your transactions</p>
 
           <div className="space-y-4">
@@ -269,11 +350,11 @@ export default function DashboardPage() {
                   <div className="flex justify-between text-sm mb-1.5">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
-                      <span className="font-medium text-earth">{cat.name}</span>
+                      <span className="font-medium text-earth dark:text-earth-200">{cat.name}</span>
                     </div>
                     <span className="text-earth-400">{cat.co2} kg ({cat.pct}%)</span>
                   </div>
-                  <div className="w-full bg-earth-100 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-earth-100 dark:bg-white/6 rounded-full h-2 overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       whileInView={{ width: `${cat.pct}%` }}
@@ -297,9 +378,9 @@ export default function DashboardPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl border border-earth-200/60 p-6 shadow-sm"
+          className="bg-white dark:bg-[#0f1c33] rounded-2xl border border-earth-200/60 dark:border-white/6 p-6 shadow-sm"
         >
-          <h2 className="text-lg font-bold text-earth mb-1">Impact Breakdown</h2>
+          <h2 className="text-lg font-bold text-earth dark:text-earth-200 mb-1">Impact Breakdown</h2>
           <p className="text-sm text-earth-400 mb-6">Your sustainability contribution</p>
 
           <div className="space-y-6">
@@ -338,7 +419,7 @@ export default function DashboardPage() {
 
       {/* Environmental Impact */}
       <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-10">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-earth mb-4">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-earth dark:text-earth-200 mb-4">
           <Leaf size={18} className="text-leaf-dark" />
           Your Environmental Impact
         </h2>
@@ -351,13 +432,13 @@ export default function DashboardPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.1 + i * 0.1, type: 'spring', bounce: 0.3 }}
               whileHover={{ y: -4 }}
-              className={`${item.bg} rounded-2xl border border-earth-200/40 p-6 text-center transition-all`}
+              className={`${item.bg} rounded-2xl border border-earth-200/40 dark:border-white/6 p-6 text-center transition-all`}
             >
               <motion.div whileHover={{ rotate: 15, scale: 1.2 }} transition={{ type: 'spring' }} className="mx-auto mb-3">
                 <item.icon size={28} className={item.color} />
               </motion.div>
               <p className={`text-3xl font-bold ${item.color} mb-1`}>{item.value}</p>
-              <p className="text-sm font-semibold text-earth mb-1">{item.label}</p>
+              <p className="text-sm font-semibold text-earth dark:text-earth-200 mb-1">{item.label}</p>
               <p className="text-xs text-earth-400">{item.desc}</p>
             </motion.div>
           ))}
@@ -366,7 +447,7 @@ export default function DashboardPage() {
 
       {/* Smart Buy Suggestions */}
       <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-        <h2 className="flex items-center gap-2 text-lg font-bold text-earth mb-4">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-earth dark:text-earth-200 mb-4">
           <PackageOpen size={18} className="text-leaf-dark" />
           Smart Buy Suggestions
         </h2>
@@ -379,16 +460,16 @@ export default function DashboardPage() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
               whileHover={{ y: -3, boxShadow: '0 15px 30px -10px rgba(0,0,0,0.08)' }}
-              className="bg-white rounded-2xl border border-earth-200/60 p-5 shadow-sm transition-all"
+              className="bg-white dark:bg-[#0f1c33] rounded-2xl border border-earth-200/60 dark:border-white/6 p-5 shadow-sm transition-all"
             >
               <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${sug.badgeColor} mb-3`}>
                 {sug.badge}
               </span>
-              <p className="text-sm text-earth-600 leading-relaxed mb-4">{sug.text}</p>
-              <div className="flex items-center gap-4 p-3 rounded-xl bg-earth-50/80">
+              <p className="text-sm text-earth-600 dark:text-earth-400 leading-relaxed mb-4">{sug.text}</p>
+              <div className="flex items-center gap-4 p-3 rounded-xl bg-earth-50/80 dark:bg-white/5">
                 <div className="flex-1 text-center">
                   <p className="text-xs text-earth-400 mb-0.5">{sug.keepLabel}</p>
-                  <p className="text-lg font-bold text-earth">{sug.keepValue}</p>
+                  <p className="text-lg font-bold text-earth dark:text-earth-200">{sug.keepValue}</p>
                 </div>
                 <span className="text-xs text-earth-300 font-medium">vs</span>
                 <div className="flex-1 text-center">

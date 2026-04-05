@@ -109,7 +109,7 @@ export default function Home() {
 
           <motion.h1
             variants={fadeUp}
-            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold font-[family-name:var(--font-heading)] text-earth tracking-tight leading-[1.05] mb-5"
+            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200 tracking-tight leading-[1.05] mb-5"
           >
             Own Less.{' '}
             <span className="gradient-text inline-block">Live More.</span>
@@ -125,7 +125,7 @@ export default function Home() {
 
           <motion.p
             variants={fadeUp}
-            className="text-base sm:text-lg text-earth-500 max-w-xl mx-auto mb-10 leading-relaxed"
+            className="text-base sm:text-lg text-earth-500 dark:text-earth-400 max-w-xl mx-auto mb-10 leading-relaxed"
           >
             AI tells you when to borrow, buy resale, or skip — so every choice helps the Earth.
             Earn rewards for sustainable decisions.
@@ -167,7 +167,7 @@ export default function Home() {
                 <p className="text-[11px] text-earth-400">{stat.label}</p>
               </div>
               {i < STATS.length - 1 && (
-                <div className="hidden sm:block w-px h-8 bg-earth-200 ml-6" />
+                <div className="hidden sm:block w-px h-8 bg-earth-200 dark:bg-white/10 ml-6" />
               )}
             </motion.div>
           ))}
@@ -195,7 +195,7 @@ export default function Home() {
                 relative flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all overflow-hidden
                 ${activeCategory === cat.label
                   ? 'bg-leaf text-white shadow-md shadow-leaf/20'
-                  : 'bg-white text-earth-600 border border-earth-200 hover:border-leaf/30 hover:bg-leaf/5'
+                  : 'bg-white dark:bg-white/8 text-earth-600 dark:text-earth-400 border border-earth-200 dark:border-white/10 hover:border-leaf/30 hover:bg-leaf/5'
                 }
               `}
             >
@@ -245,7 +245,7 @@ export default function Home() {
           viewport={{ once: true }}
           className="flex items-end justify-between mb-8"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-heading)] text-earth">
+          <h2 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200">
             Explore Listings
           </h2>
           <motion.span

@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, SlidersHorizontal, Leaf, Navigation2, ChevronRight, Loader2 } from 'lucide-react';
+import { MapPin, SlidersHorizontal, Leaf, Navigation2, ChevronRight, Loader2, Maximize2, X } from 'lucide-react';
 import Link from 'next/link';
 import type { MapItem } from '../components/MapView';
 
@@ -11,7 +11,7 @@ const MapView = dynamic(() => import('../components/MapView'), { ssr: false });
 const USER_LOCATION = { lat: 33.4255, lng: -111.9400 };
 
 function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
+  const R = 3958.8; // Earth radius in miles
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -20,7 +20,8 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-const RADIUS_OPTIONS = [2, 5, 10, 20];
+// Radius options in miles
+const RADIUS_OPTIONS = [1, 3, 6, 12];
 
 const listItemVariants = {
   hidden: { opacity: 0, x: 20 },
@@ -44,10 +45,11 @@ interface ListingItem {
 }
 
 export default function MapPage() {
-  const [radiusKm, setRadiusKm] = useState(10);
+  const [radiusMiles, setRadiusMiles] = useState(6);
   const [filterCategory, setFilterCategory] = useState('All');
   const [mapItems, setMapItems] = useState<MapItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Fetch items from API
   useEffect(() => {
@@ -85,17 +87,21 @@ export default function MapPage() {
   }, [mapItems]);
 
   const filteredItems = useMemo(() => {
+    // Convert radius from miles to km for the distance calculation comparison
+    const radiusKm = radiusMiles * 1.60934;
     return mapItems
       .map((item) => ({
         ...item,
         distance: getDistance(USER_LOCATION.lat, USER_LOCATION.lng, item.lat, item.lng),
       }))
-      .filter((item) => item.distance <= radiusKm)
+      .filter((item) => item.distance <= radiusMiles)
       .filter((item) => filterCategory === 'All' || item.category === filterCategory)
       .sort((a, b) => a.distance - b.distance);
-  }, [radiusKm, filterCategory, mapItems]);
+  }, [radiusMiles, filterCategory, mapItems]);
 
   const totalCo2 = filteredItems.reduce((s, i) => s + i.co2Saved, 0);
+  // Convert radius to km for the map circle display
+  const radiusKmForMap = radiusMiles * 1.60934;
 
   if (loading) {
     return (
@@ -124,12 +130,12 @@ export default function MapPage() {
             <MapPin size={20} className="text-white" />
           </motion.div>
           <div>
-            <h1 className="text-2xl font-bold font-[family-name:var(--font-heading)] text-earth">
+            <h1 className="text-2xl font-bold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200">
               Nearby Items
             </h1>
             <p className="text-sm text-earth-400 flex items-center gap-1">
               <Navigation2 size={12} />
-              Tempe, AZ · {mapItems.length} items from database
+              Tempe, AZ
             </p>
           </div>
         </div>
@@ -141,26 +147,26 @@ export default function MapPage() {
           className="flex items-center gap-2"
         >
           <SlidersHorizontal size={14} className="text-earth-400" />
-          <span className="text-sm text-earth-500">Radius:</span>
-          <div className="flex bg-earth-100 rounded-lg p-0.5">
+          <span className="text-sm text-earth-500 dark:text-earth-400">Radius:</span>
+          <div className="flex bg-earth-100 dark:bg-white/8 rounded-lg p-0.5">
             {RADIUS_OPTIONS.map((r) => (
               <button
                 key={r}
-                onClick={() => setRadiusKm(r)}
+                onClick={() => setRadiusMiles(r)}
                 className={`relative px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  radiusKm === r
-                    ? 'text-leaf-dark'
-                    : 'text-earth-400 hover:text-earth-600'
+                  radiusMiles === r
+                    ? 'text-leaf-dark dark:text-leaf'
+                    : 'text-earth-400 hover:text-earth-600 dark:hover:text-earth-200'
                 }`}
               >
-                {radiusKm === r && (
+                {radiusMiles === r && (
                   <motion.div
                     layoutId="radius-pill"
-                    className="absolute inset-0 bg-white shadow-sm rounded-md"
+                    className="absolute inset-0 bg-white dark:bg-white/15 shadow-sm rounded-md"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                   />
                 )}
-                <span className="relative z-10">{r}km</span>
+                <span className="relative z-10">{r}mi</span>
               </button>
             ))}
           </div>
@@ -183,7 +189,7 @@ export default function MapPage() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               filterCategory === cat
                 ? 'bg-leaf text-white shadow-sm shadow-leaf/20'
-                : 'bg-white text-earth-500 border border-earth-200 hover:border-leaf/30'
+                : 'bg-white dark:bg-white/8 text-earth-500 dark:text-earth-400 border border-earth-200 dark:border-white/10 hover:border-leaf/30'
             }`}
           >
             {cat}
@@ -199,12 +205,25 @@ export default function MapPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="lg:col-span-2"
         >
-          <MapView
-            items={filteredItems}
-            userLocation={USER_LOCATION}
-            radiusKm={radiusKm}
-            className="h-[450px] sm:h-[550px]"
-          />
+          {/* Map container with fullscreen button */}
+          <div className="relative">
+            <MapView
+              items={filteredItems}
+              userLocation={USER_LOCATION}
+              radiusKm={radiusKmForMap}
+              className="h-[450px] sm:h-[550px]"
+            />
+            {/* Fullscreen Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsFullscreen(true)}
+              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/90 dark:bg-[#0f1c33]/90 backdrop-blur-sm border border-earth-200/60 dark:border-white/10 text-xs font-semibold text-earth-600 dark:text-earth-300 shadow-md hover:shadow-lg transition-all"
+            >
+              <Maximize2 size={14} />
+              Fullscreen
+            </motion.button>
+          </div>
 
           {/* CO2 callout */}
           <motion.div
@@ -216,8 +235,8 @@ export default function MapPage() {
             <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 4 }}>
               <Leaf size={18} className="text-leaf-dark shrink-0" />
             </motion.div>
-            <p className="text-sm text-earth-600">
-              <strong className="text-leaf-dark">{filteredItems.length} items</strong> within {radiusKm}km could save up to{' '}
+            <p className="text-sm text-earth-600 dark:text-earth-400">
+              <strong className="text-leaf-dark">{filteredItems.length} items</strong> within {radiusMiles} miles could save up to{' '}
               <strong className="text-leaf-dark">{totalCo2.toFixed(1)} kg CO₂</strong> — closer items mean less travel emissions!
             </p>
           </motion.div>
@@ -228,11 +247,11 @@ export default function MapPage() {
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="bg-white rounded-2xl border border-earth-200/60 shadow-sm overflow-hidden"
+          className="bg-white dark:bg-[#0f1c33] rounded-2xl border border-earth-200/60 dark:border-white/6 shadow-sm overflow-hidden"
         >
-          <div className="px-5 py-4 border-b border-earth-100">
-            <h2 className="text-base font-bold text-earth">
-              Items Within {radiusKm}km
+          <div className="px-5 py-4 border-b border-earth-100 dark:border-white/6">
+            <h2 className="text-base font-bold text-earth dark:text-earth-200">
+              Items Within {radiusMiles}mi
               <motion.span
                 key={filteredItems.length}
                 initial={{ scale: 1.5, opacity: 0 }}
@@ -244,7 +263,7 @@ export default function MapPage() {
             </h2>
           </div>
 
-          <div className="divide-y divide-earth-100 max-h-[450px] overflow-y-auto">
+          <div className="divide-y divide-earth-100 dark:divide-white/5 max-h-[450px] overflow-y-auto">
             <AnimatePresence mode="wait">
               {filteredItems.length === 0 ? (
                 <motion.div
@@ -266,7 +285,7 @@ export default function MapPage() {
                     <motion.div key={item.id} custom={i} variants={listItemVariants}>
                       <Link
                         href={`/listings/${item.id}`}
-                        className="flex items-center gap-3 px-5 py-3.5 hover:bg-earth-50 transition-all group"
+                        className="flex items-center gap-3 px-5 py-3.5 hover:bg-earth-50 dark:hover:bg-white/5 transition-all group"
                       >
                         <motion.div
                           whileHover={{ scale: 1.15, rotate: 8 }}
@@ -280,11 +299,11 @@ export default function MapPage() {
                           />
                         </motion.div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-earth truncate">{item.title}</p>
+                          <p className="text-sm font-semibold text-earth dark:text-earth-200 truncate">{item.title}</p>
                           <div className="flex items-center gap-2 text-xs text-earth-400">
                             <span>{item.category}</span>
                             <span>·</span>
-                            <span>{item.distance!.toFixed(1)}km</span>
+                            <span>{item.distance!.toFixed(1)}mi</span>
                             <span>·</span>
                             <span className="text-leaf-dark font-medium">-{item.co2Saved}kg CO₂</span>
                           </div>
@@ -302,6 +321,43 @@ export default function MapPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Fullscreen Map Modal */}
+      <AnimatePresence>
+        {isFullscreen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsFullscreen(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+              className="relative w-full h-full max-w-7xl max-h-[90vh] rounded-2xl overflow-hidden"
+            >
+              <MapView
+                items={filteredItems}
+                userLocation={USER_LOCATION}
+                radiusKm={radiusKmForMap}
+                className="h-full w-full"
+              />
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsFullscreen(false)}
+                className="absolute top-4 right-4 z-[1001] flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/90 dark:bg-[#0f1c33]/90 backdrop-blur-sm border border-earth-200/60 text-sm font-semibold text-earth-600 shadow-lg"
+              >
+                <X size={16} />
+                Close
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

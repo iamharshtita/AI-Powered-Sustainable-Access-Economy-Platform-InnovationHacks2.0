@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Square, Volume2, Sparkles } from 'lucide-react';
 
@@ -13,14 +13,22 @@ export default function VoicePlayer({
   const [progress, setProgress] = useState(0);
   const [waves, setWaves] = useState<number[]>(Array(20).fill(4));
   const [usingElevenLabs, setUsingElevenLabs] = useState(false);
+  const [activeWordIndex, setActiveWordIndex] = useState(-1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const totalDurationRef = useRef<number>(0);
+
+  // Split text into words
+  const words = useMemo(() => text.split(/\s+/).filter(Boolean), [text]);
 
   const cleanup = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (progressRef.current) clearInterval(progressRef.current);
+    if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -29,7 +37,21 @@ export default function VoicePlayer({
     setIsPlaying(false);
     setIsLoading(false);
     setProgress(0);
+    setActiveWordIndex(-1);
   }, []);
+
+  // Update active word based on progress
+  const updateActiveWord = useCallback((progressPct: number) => {
+    if (progressPct <= 0) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const idx = Math.min(
+      Math.floor((progressPct / 100) * words.length),
+      words.length - 1
+    );
+    setActiveWordIndex(idx);
+  }, [words.length]);
 
   useEffect(() => {
     return () => {
@@ -71,7 +93,7 @@ export default function VoicePlayer({
 
       if (!response.ok) {
         const data = await response.json();
-        if (data.fallback) return false; // Signal to use browser fallback
+        if (data.fallback) return false;
         return false;
       }
 
@@ -89,20 +111,24 @@ export default function VoicePlayer({
         setIsLoading(false);
         setIsPlaying(true);
         setUsingElevenLabs(true);
+        startTimeRef.current = Date.now();
       };
 
       audio.ontimeupdate = () => {
         if (audio.duration > 0) {
-          setProgress((audio.currentTime / audio.duration) * 100);
+          const pct = (audio.currentTime / audio.duration) * 100;
+          setProgress(pct);
+          updateActiveWord(pct);
         }
       };
 
       audio.onended = () => {
         setProgress(100);
+        setActiveWordIndex(words.length - 1);
         setTimeout(() => {
           cleanup();
           URL.revokeObjectURL(audioUrl);
-        }, 300);
+        }, 600);
       };
 
       audio.onerror = () => {
@@ -116,7 +142,7 @@ export default function VoicePlayer({
       setIsLoading(false);
       return false;
     }
-  }, [text, cleanup]);
+  }, [text, cleanup, updateActiveWord, words.length]);
 
   const playWithBrowserSpeech = useCallback(() => {
     if (!('speechSynthesis' in window)) return;
@@ -138,18 +164,23 @@ export default function VoicePlayer({
     if (preferred) utterance.voice = preferred;
 
     const estimatedDuration = text.length * 65;
+    totalDurationRef.current = estimatedDuration;
     const startTime = Date.now();
 
     utterance.onstart = () => {
+      startTimeRef.current = startTime;
       progressRef.current = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        setProgress(Math.min((elapsed / estimatedDuration) * 100, 95));
-      }, 50);
+        const pct = Math.min((elapsed / estimatedDuration) * 100, 95);
+        setProgress(pct);
+        updateActiveWord(pct);
+      }, 60);
     };
 
     utterance.onend = () => {
       setProgress(100);
-      setTimeout(cleanup, 300);
+      setActiveWordIndex(words.length - 1);
+      setTimeout(cleanup, 600);
     };
     utterance.onerror = () => cleanup();
 
@@ -157,7 +188,7 @@ export default function VoicePlayer({
     setIsPlaying(true);
     setUsingElevenLabs(false);
     window.speechSynthesis.speak(utterance);
-  }, [text, cleanup]);
+  }, [text, cleanup, updateActiveWord, words.length]);
 
   const handleToggle = async () => {
     if (isPlaying || isLoading) {
@@ -166,7 +197,6 @@ export default function VoicePlayer({
       return;
     }
 
-    // Try ElevenLabs first, fall back to browser speech
     const success = await playWithElevenLabs();
     if (!success) {
       playWithBrowserSpeech();
@@ -178,10 +208,10 @@ export default function VoicePlayer({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`
-        relative flex items-center gap-4 p-4 rounded-2xl bg-white border transition-all duration-500
+        relative flex flex-col gap-3 p-4 rounded-2xl bg-white dark:bg-[#0f1c33] border transition-all duration-500
         ${isPlaying || isLoading
           ? 'border-leaf/30 shadow-lg shadow-leaf/10'
-          : 'border-earth-200 hover:border-earth-300'
+          : 'border-earth-200 dark:border-white/8 hover:border-earth-300'
         }
       `}
     >
@@ -192,96 +222,132 @@ export default function VoicePlayer({
         transition={{ duration: 0.3 }}
       />
 
-      {/* Play Button */}
-      <motion.button
-        whileHover={{ scale: 1.1, rotate: isPlaying ? 0 : 15 }}
-        whileTap={{ scale: 0.88 }}
-        onClick={handleToggle}
-        disabled={isLoading}
+      {/* Top row: Play Button + Status */}
+      <div className="flex items-center gap-4">
+        {/* Play Button */}
+        <motion.button
+          whileHover={{ scale: 1.1, rotate: isPlaying ? 0 : 15 }}
+          whileTap={{ scale: 0.88 }}
+          onClick={handleToggle}
+          disabled={isLoading}
+          className={`
+            flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-all duration-300
+            ${isPlaying
+              ? 'bg-gradient-to-br from-leaf to-ocean text-white shadow-lg shadow-leaf/30'
+              : isLoading
+              ? 'bg-leaf/20 text-leaf-dark animate-pulse'
+              : 'bg-earth-100 dark:bg-white/8 text-earth-600 dark:text-earth-400 hover:bg-leaf/10 hover:text-leaf-dark'
+            }
+          `}
+        >
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1, rotate: 360 }}
+                exit={{ scale: 0 }}
+                transition={{ rotate: { repeat: Infinity, duration: 1, ease: 'linear' } }}
+              >
+                <Sparkles size={16} />
+              </motion.div>
+            ) : isPlaying ? (
+              <motion.div
+                key="stop"
+                initial={{ scale: 0, rotate: -90 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 90 }}
+                transition={{ type: 'spring', bounce: 0.4 }}
+              >
+                <Square size={16} fill="currentColor" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="play"
+                initial={{ scale: 0, rotate: -90 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 90 }}
+                transition={{ type: 'spring', bounce: 0.4 }}
+              >
+                <Play size={18} fill="currentColor" className="ml-0.5" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+
+        {/* Waveform + label */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <motion.div
+              animate={isPlaying ? { scale: [1, 1.2, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            >
+              <Volume2
+                size={14}
+                className={`transition-colors duration-300 ${isPlaying ? 'text-leaf' : 'text-earth-400'}`}
+              />
+            </motion.div>
+            <span className="text-xs font-medium text-earth-400 italic">
+              {isLoading
+                ? 'Generating ElevenLabs voice...'
+                : usingElevenLabs
+                ? '🎙️ ElevenLabs AI Voice'
+                : '"Sentient" AI Narration'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-[2px] h-7">
+            {waves.map((h, i) => (
+              <motion.div
+                key={i}
+                animate={{ height: `${h}px` }}
+                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                className={`w-[3px] rounded-full transition-colors duration-200 ${
+                  isPlaying ? 'bg-gradient-to-t from-leaf to-ocean' : 'bg-earth-200 dark:bg-white/15'
+                }`}
+                style={{
+                  background: isPlaying
+                    ? `linear-gradient(to top, #22c55e, ${i % 2 ? '#06b6d4' : '#16a34a'})`
+                    : undefined,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Karaoke lyrics row */}
+      <div
         className={`
-          flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-all duration-300
+          px-2 py-2.5 rounded-xl text-sm leading-relaxed transition-all duration-300
           ${isPlaying
-            ? 'bg-gradient-to-br from-leaf to-ocean text-white shadow-lg shadow-leaf/30'
-            : isLoading
-            ? 'bg-leaf/20 text-leaf-dark animate-pulse'
-            : 'bg-earth-100 text-earth-600 hover:bg-leaf/10 hover:text-leaf-dark'
+            ? 'bg-leaf/5 dark:bg-leaf/10 border border-leaf/15'
+            : 'bg-earth-50 dark:bg-white/5'
           }
         `}
       >
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1, rotate: 360 }}
-              exit={{ scale: 0 }}
-              transition={{ rotate: { repeat: Infinity, duration: 1, ease: 'linear' } }}
-            >
-              <Sparkles size={16} />
-            </motion.div>
-          ) : isPlaying ? (
-            <motion.div
-              key="stop"
-              initial={{ scale: 0, rotate: -90 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0, rotate: 90 }}
-              transition={{ type: 'spring', bounce: 0.4 }}
-            >
-              <Square size={16} fill="currentColor" />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="play"
-              initial={{ scale: 0, rotate: -90 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0, rotate: 90 }}
-              transition={{ type: 'spring', bounce: 0.4 }}
-            >
-              <Play size={18} fill="currentColor" className="ml-0.5" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.button>
-
-      {/* Waveform & Text */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <motion.div
-            animate={isPlaying ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-          >
-            <Volume2
-              size={14}
-              className={`transition-colors duration-300 ${isPlaying ? 'text-leaf' : 'text-earth-400'}`}
-            />
-          </motion.div>
-          <span className="text-xs font-medium text-earth-400 italic">
-            {isLoading
-              ? 'Generating ElevenLabs voice...'
-              : usingElevenLabs
-              ? '🎙️ ElevenLabs AI Voice'
-              : '"Sentient" AI Narration'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-[2px] h-7">
-          {waves.map((h, i) => (
-            <motion.div
+        <p className="flex flex-wrap gap-x-[5px] gap-y-1">
+          {words.map((word, i) => (
+            <motion.span
               key={i}
-              animate={{ height: `${h}px` }}
-              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-              className={`w-[3px] rounded-full transition-colors duration-200 ${
-                isPlaying ? 'bg-gradient-to-t from-leaf to-ocean' : 'bg-earth-200'
+              animate={
+                i === activeWordIndex
+                  ? { scale: 1.1, y: -1 }
+                  : { scale: 1, y: 0 }
+              }
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              className={`karaoke-word transition-all duration-150 ${
+                i === activeWordIndex
+                  ? 'active'
+                  : i < activeWordIndex
+                  ? 'past'
+                  : 'text-earth-600 dark:text-earth-400'
               }`}
-              style={{
-                background: isPlaying
-                  ? `linear-gradient(to top, #22c55e, ${i % 2 ? '#06b6d4' : '#16a34a'})`
-                  : undefined,
-              }}
-            />
+            >
+              {word}
+            </motion.span>
           ))}
-          <p className="ml-3 text-sm text-earth-600 truncate">{text}</p>
-        </div>
+        </p>
       </div>
     </motion.div>
   );

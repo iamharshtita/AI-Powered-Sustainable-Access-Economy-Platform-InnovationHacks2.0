@@ -1,13 +1,57 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function NudgeAlert() {
-  const [isVisible, setIsVisible] = useState(true);
+interface DashboardStats {
+  borrow_count: number;
+  buy_count: number;
+  co2_saved_kg: number;
+  money_saved: number;
+}
 
-  if (!isVisible) return null;
+export default function NudgeAlert() {
+  const [isVisible, setIsVisible] = useState(false);
+  const [user, setUser] = useState<{ sub?: string } | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    // Only show nudge to signed-in users
+    fetch('/auth/profile', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(async (data) => {
+        if (!data) return; // Not signed in — do NOT show nudge
+        setUser(data);
+
+        // Fetch their dashboard stats for personalized nudge
+        try {
+          const userId = data?.sub || '';
+          const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+          const res = await fetch(`/api/dashboard${params}`);
+          if (res.ok) {
+            const dashData = await res.json();
+            setStats(dashData.stats || null);
+          }
+        } catch {}
+
+        // Show the nudge after a short delay
+        setTimeout(() => setIsVisible(true), 2500);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!isVisible || !user) return null;
+
+  // Build personalized message based on dashboard stats
+  const borrowCount = stats?.borrow_count ?? 0;
+  const moneyText = stats?.money_saved && stats.money_saved > 0
+    ? `You've already saved $${stats.money_saved} by borrowing!`
+    : `Borrowing costs just $12/day vs $150 to buy new!`;
+
+  const nudgeText = borrowCount > 3
+    ? `You've borrowed ${borrowCount} items! Before your next purchase, check if you can borrow it first — ${moneyText}`
+    : `You've looked at power drills 3 times this month. ${moneyText}`;
 
   return (
     <AnimatePresence>
@@ -16,7 +60,7 @@ export default function NudgeAlert() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed bottom-6 right-6 w-[360px] z-50 bg-white rounded-2xl shadow-2xl shadow-earth/10 border border-earth-200 overflow-hidden"
+        className="fixed bottom-6 right-6 w-[360px] z-50 bg-white dark:bg-[#0f1c33] rounded-2xl shadow-2xl shadow-earth/10 border border-earth-200 dark:border-white/8 overflow-hidden"
       >
         {/* Accent bar */}
         <div className="h-1 w-full bg-gradient-to-r from-leaf to-ocean" />
@@ -31,17 +75,14 @@ export default function NudgeAlert() {
             </div>
             <button
               onClick={() => setIsVisible(false)}
-              className="text-earth-400 hover:text-earth-600 transition-colors p-1"
+              className="text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 transition-colors p-1"
             >
               <X size={16} />
             </button>
           </div>
 
-          <p className="text-sm text-earth-600 leading-relaxed mb-4">
-            You&apos;ve looked at power drills 3 times this month. Borrowing
-            costs <strong className="text-earth font-semibold">$12/day</strong>{' '}
-            vs <strong className="text-earth font-semibold">$150</strong> to buy
-            new!
+          <p className="text-sm text-earth-600 dark:text-earth-400 leading-relaxed mb-4">
+            {nudgeText}
           </p>
 
           <div className="flex gap-2">
@@ -59,7 +100,7 @@ export default function NudgeAlert() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsVisible(false)}
-              className="flex-1 bg-earth-100 text-earth-500 text-sm font-medium py-2.5 rounded-xl hover:bg-earth-200 transition-colors"
+              className="flex-1 bg-earth-100 dark:bg-white/8 text-earth-500 dark:text-earth-400 text-sm font-medium py-2.5 rounded-xl hover:bg-earth-200 dark:hover:bg-white/12 transition-colors"
             >
               Dismiss
             </motion.button>

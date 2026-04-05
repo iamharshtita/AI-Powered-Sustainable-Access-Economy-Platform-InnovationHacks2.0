@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Tell Tailwind v4 to use class-based dark mode (html.dark) */
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-leaf: #22c55e;
   --color-leaf-dark: #16a34a;
@@ -36,7 +39,62 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
+
+  /* ===== COMPREHENSIVE DARK MODE ===== */
+  html.dark body {
+    background-color: #060d1f;
+    color: #e2e8f0;
+  }
+
+  /* Background overrides */
+  html.dark .bg-white { background-color: #0f1c33 !important; }
+  html.dark .bg-earth-50 { background-color: #060d1f !important; }
+  html.dark .bg-earth-100 { background-color: #0c1526 !important; }
+  html.dark .bg-earth-100\/50 { background-color: rgba(255,255,255,0.04) !important; }
+  html.dark .bg-white\/80 { background: rgba(6, 13, 31, 0.85) !important; }
+  html.dark .bg-white\/90 { background: rgba(6, 13, 31, 0.92) !important; }
+
+  /* Text overrides */
+  html.dark .text-earth { color: #e2e8f0 !important; }
+  html.dark .text-earth-800 { color: #cbd5e1 !important; }
+  html.dark .text-earth-700 { color: #94a3b8 !important; }
+  html.dark .text-earth-600 { color: #94a3b8 !important; }
+  html.dark .text-earth-500 { color: #64748b !important; }
+  html.dark .text-earth-400 { color: #64748b !important; }
+  html.dark .text-earth-300 { color: #475569 !important; }
+
+  /* Border overrides */
+  html.dark .border-earth-200 { border-color: rgba(255,255,255,0.08) !important; }
+  html.dark .border-earth-200\/60 { border-color: rgba(255,255,255,0.06) !important; }
+  html.dark .border-earth-100 { border-color: rgba(255,255,255,0.05) !important; }
+
+  /* Nav */
+  html.dark nav {
+    background: rgba(6, 13, 31, 0.88) !important;
+    border-bottom-color: rgba(255,255,255,0.06) !important;
+  }
+
+  /* Hover states */
+  html.dark .hover\:bg-earth-100:hover { background-color: rgba(255,255,255,0.06) !important; }
+  html.dark .hover\:bg-earth-200:hover { background-color: rgba(255,255,255,0.08) !important; }
+
+  /* Dividers */
+  html.dark .divide-earth-100 > :not(:first-child) { border-color: rgba(255,255,255,0.05) !important; }
+
+  /* Specific element overrides for pages lacking dark: classes */
+  html.dark .bg-leaf\/5 { background-color: rgba(34,197,94,0.08) !important; }
+  html.dark .bg-leaf\/10 { background-color: rgba(34,197,94,0.12) !important; }
+  html.dark .bg-ocean\/5 { background-color: rgba(6,182,212,0.08) !important; }
+  html.dark .bg-ocean\/10 { background-color: rgba(6,182,212,0.12) !important; }
+  html.dark .bg-amber\/5 { background-color: rgba(245,158,11,0.08) !important; }
+  html.dark .bg-amber\/10 { background-color: rgba(245,158,11,0.12) !important; }
+
+  /* Shadow suppression in dark mode */
+  html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3) !important; }
+  html.dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4) !important; }
+  html.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4) !important; }
 }
 
 @layer utilities {
@@ -77,7 +135,7 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   }
 
-  /* ---- Ultra Animations ---- */
+  /* ---- Animations ---- */
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
@@ -170,5 +228,47 @@
   @keyframes counter-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(-360deg); }
+  }
+
+  /* Animated mesh background */
+  .animated-bg-blob-1 { animation: blob-drift-1 18s ease-in-out infinite; }
+  .animated-bg-blob-2 { animation: blob-drift-2 22s ease-in-out infinite; }
+  .animated-bg-blob-3 { animation: blob-drift-3 26s ease-in-out infinite; }
+  .animated-bg-blob-4 { animation: blob-drift-4 20s ease-in-out infinite; }
+
+  @keyframes blob-drift-1 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(60px,-40px) scale(1.15); }
+    66% { transform: translate(-30px,60px) scale(0.9); }
+  }
+  @keyframes blob-drift-2 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(-80px,50px) scale(1.2); }
+    66% { transform: translate(50px,-70px) scale(0.85); }
+  }
+  @keyframes blob-drift-3 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    40% { transform: translate(90px,30px) scale(1.1); }
+    70% { transform: translate(-60px,-40px) scale(0.95); }
+  }
+  @keyframes blob-drift-4 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-50px,-80px) scale(1.25); }
+  }
+
+  /* Karaoke lyrics highlight */
+  .karaoke-word {
+    display: inline-block;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    padding: 0 2px;
+  }
+  .karaoke-word.active {
+    color: #16a34a;
+    background: rgba(34, 197, 94, 0.15);
+    transform: scale(1.05);
+  }
+  .karaoke-word.past {
+    color: #94a3b8;
   }
 }
