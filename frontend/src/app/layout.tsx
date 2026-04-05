@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "./components/Navigation";
 import ClientLeaves from "./components/ClientLeaves";
 import OnboardingGuard from "./components/OnboardingGuard";
+import AnimatedBackground from "./components/AnimatedBackground";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,8 +28,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
-      <body className="bg-earth-50 text-earth antialiased min-h-screen relative overflow-x-hidden" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
+      <body className="bg-earth-50 dark:bg-[#060d1f] text-earth dark:text-earth-200 antialiased min-h-screen relative overflow-x-hidden transition-colors duration-500" suppressHydrationWarning>
+        <AnimatedBackground />
         <ClientLeaves />
         <OnboardingGuard />
         <Navigation />

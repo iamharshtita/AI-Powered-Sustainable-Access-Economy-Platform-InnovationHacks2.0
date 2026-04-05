@@ -154,7 +154,7 @@ export default function ListingDetail() {
     co2Saved: item.co2Saved,
     lat: item.latitude!,
     lng: item.longitude!,
-    recommendation: item.recommendation,
+    recommendation: (item.recommendation === 'borrow' ? 'borrow' : 'buy_resale') as 'borrow' | 'buy_resale',
   } : null;
 
   return (
@@ -309,14 +309,14 @@ export default function ListingDetail() {
             <motion.div animate={{ rotate: [0, 15, -15, 0] }} transition={{ repeat: Infinity, duration: 4 }}>
               <Leaf size={18} className="text-leaf-dark shrink-0" />
             </motion.div>
-            <p className="text-sm text-earth-600">
+            <p className="text-sm text-earth-600 dark:text-earth-400">
               Choosing to{' '}
               <strong className="text-leaf-dark">
                 {item.recommendation === 'borrow' ? 'borrow' : 'buy resale'}
               </strong>{' '}
               this item saves <strong className="text-leaf-dark">{item.co2Saved} kg</strong> of
-              CO₂ emissions — equivalent to driving{' '}
-              <strong>{Math.round(item.co2Saved * 3.9)} km</strong> less.
+              CO₂ emissions — equivalent to not driving{' '}
+              <strong>{Math.round(item.co2Saved * 2.42)} miles</strong>.
             </p>
           </motion.div>
 

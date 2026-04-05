@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         hostname: "sustainableaccessplatform-listingimagesbucket35876-phncghrg4bto.s3.us-east-1.amazonaws.com",
         pathname: "/items/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
     unoptimized: true,
   },
