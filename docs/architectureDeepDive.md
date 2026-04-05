@@ -4,9 +4,8 @@ This document explains the technical architecture of the ReEarth AI-Powered Sust
 
 ![Architecture Diagram](./media/architecture.png)
 
-> **[PLACEHOLDER]** Please add the architecture diagram to `docs/media/architecture.png`. See the [README](../README.md#high-level-architecture) for what the diagram should include.
-
 ---
+
 
 ## Architecture Flow
 
