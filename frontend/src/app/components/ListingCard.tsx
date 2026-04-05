@@ -1,7 +1,7 @@
 'use client';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
 import RecommendationBadge from './RecommendationBadge';
 
 export interface ListingProps {
@@ -16,7 +16,22 @@ export interface ListingProps {
   image: string;
 }
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  electronics: '🖥️',
+  furniture: '🪑',
+  tools: '🔧',
+  sports: '⚽',
+  outdoor: '🏕️',
+  wellness: '🧘',
+  kitchen: '🍳',
+  clothing: '👕',
+  books: '📚',
+};
+
 export default function ListingCard({ listing }: { listing: ListingProps }) {
+  const [imgError, setImgError] = useState(false);
+  const emoji = CATEGORY_EMOJI[listing.category.toLowerCase()] || '📦';
+
   return (
     <Link href={`/listings/${listing.id}`}>
       <motion.div
@@ -27,14 +42,20 @@ export default function ListingCard({ listing }: { listing: ListingProps }) {
         whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.12)' }}
         className="group bg-white rounded-2xl overflow-hidden border border-earth-200/60 cursor-pointer transition-colors hover:border-leaf/20"
       >
-        {/* Image */}
+        {/* Image or Gradient Fallback */}
         <div className="relative aspect-[4/3] bg-earth-100 overflow-hidden">
-          <Image
-            src={listing.image}
-            alt={listing.title}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
-          />
+          {!imgError && listing.image ? (
+            <img
+              src={listing.image}
+              alt={listing.title}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-leaf/10 via-ocean/5 to-earth-100">
+              <span className="text-5xl">{emoji}</span>
+            </div>
+          )}
           {/* Hover gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-3 left-3">

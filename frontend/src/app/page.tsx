@@ -1,57 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SearchBar from './components/SearchBar';
 import ListingCard, { ListingProps } from './components/ListingCard';
 import NudgeAlert from './components/NudgeAlert';
-import { Leaf, Recycle, TrendingUp, TriangleAlert, Search, Sparkles } from 'lucide-react';
+import { Leaf, Recycle, TrendingUp, TriangleAlert, Search, Sparkles, Loader2 } from 'lucide-react';
 
 const CATEGORIES = [
   { label: 'All', emoji: '' },
   { label: 'Electronics', emoji: '🖥️' },
   { label: 'Furniture', emoji: '🪑' },
+  { label: 'Tools', emoji: '🔧' },
   { label: 'Sports', emoji: '⚽' },
   { label: 'Outdoor', emoji: '🏕️' },
   { label: 'Wellness', emoji: '🧘' },
   { label: 'Kitchen', emoji: '🍳' },
   { label: 'Clothing', emoji: '👕' },
   { label: 'Books', emoji: '📚' },
-];
-
-const MOCK_LISTINGS: ListingProps[] = [
-  {
-    id: '1',
-    title: 'Makita Power Drill 18V',
-    category: 'Tools',
-    condition: 'like_new',
-    borrowPrice: 12,
-    resalePrice: 85,
-    recommendation: 'borrow',
-    co2Saved: 15.4,
-    image: '/items/drill.png',
-  },
-  {
-    id: '2',
-    title: 'Vintage Fuji Film Camera',
-    category: 'Electronics',
-    condition: 'good',
-    borrowPrice: 20,
-    resalePrice: 250,
-    recommendation: 'buy_resale',
-    co2Saved: 32.1,
-    image: '/items/camera.png',
-  },
-  {
-    id: '3',
-    title: 'Coleman Camping Tent 4-Person',
-    category: 'Outdoor',
-    condition: 'fair',
-    borrowPrice: 15,
-    resalePrice: 60,
-    recommendation: 'borrow',
-    co2Saved: 48.0,
-    image: '/items/tent.png',
-  },
 ];
 
 const STATS = [
@@ -76,12 +41,46 @@ const fadeUp = {
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
-  const filteredListings =
-    activeCategory === 'All'
-      ? MOCK_LISTINGS
-      : MOCK_LISTINGS.filter(
-          (l) => l.category.toLowerCase() === activeCategory.toLowerCase()
-        );
+  const [listings, setListings] = useState<ListingProps[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchListings = useCallback(async (category: string, query: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (category && category !== 'All') {
+        params.set('category', category.toLowerCase());
+      }
+      if (query) {
+        params.set('q', query);
+      }
+      const url = `/api/listings${params.toString() ? `?${params}` : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setListings(data.listings || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch listings:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchListings(activeCategory, searchQuery);
+  }, [activeCategory, searchQuery, fetchListings]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setActiveCategory('All'); // Reset category when searching
+  };
+
+  const handleCategoryClick = (label: string) => {
+    setActiveCategory(label);
+    setSearchQuery(''); // Clear search when switching categories
+  };
 
   return (
     <div className="pb-20">
@@ -133,7 +132,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div variants={fadeUp}>
-            <SearchBar />
+            <SearchBar onSearch={handleSearch} />
           </motion.div>
         </motion.div>
       </section>
@@ -191,7 +190,7 @@ export default function Home() {
               transition={{ delay: 0.6 + i * 0.04, type: 'spring', bounce: 0.3 }}
               whileHover={{ scale: 1.06, y: -2 }}
               whileTap={{ scale: 0.94 }}
-              onClick={() => setActiveCategory(cat.label)}
+              onClick={() => handleCategoryClick(cat.label)}
               className={`
                 relative flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all overflow-hidden
                 ${activeCategory === cat.label
@@ -216,6 +215,28 @@ export default function Home() {
         </motion.div>
       </section>
 
+      {/* Search indicator */}
+      {searchQuery && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6"
+        >
+          <div className="flex items-center gap-2 text-sm text-earth-500">
+            <Search size={14} />
+            <span>
+              Results for &quot;<strong className="text-earth">{searchQuery}</strong>&quot;
+            </span>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="ml-2 text-xs text-leaf-dark hover:underline"
+            >
+              Clear
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Listings */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -228,42 +249,63 @@ export default function Home() {
             Explore Listings
           </h2>
           <motion.span
-            key={filteredListings.length}
+            key={listings.length}
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="text-sm text-earth-400"
           >
-            {filteredListings.length} items
+            {loading ? '...' : `${listings.length} items`}
           </motion.span>
         </motion.div>
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={activeCategory}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.35 }}
-          >
-            {filteredListings.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredListings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20">
-                <motion.div
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                >
-                  <Search size={40} className="mx-auto text-earth-300 mb-4" />
-                </motion.div>
-                <p className="text-earth-400 text-lg">No items in this category yet</p>
-                <p className="text-earth-300 text-sm mt-1">Try selecting &quot;All&quot; to see everything</p>
-              </div>
-            )}
-          </motion.div>
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20"
+            >
+              <Loader2 size={32} className="text-leaf animate-spin mb-4" />
+              <p className="text-earth-400 text-sm">Loading listings from database...</p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`${activeCategory}-${searchQuery}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.35 }}
+            >
+              {listings.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {listings.map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  >
+                    <Search size={40} className="mx-auto text-earth-300 mb-4" />
+                  </motion.div>
+                  <p className="text-earth-400 text-lg">
+                    {searchQuery
+                      ? `No items matching "${searchQuery}"`
+                      : 'No items in this category yet'}
+                  </p>
+                  <p className="text-earth-300 text-sm mt-1">
+                    {searchQuery
+                      ? 'Try a different search term'
+                      : 'Try selecting "All" to see everything'}
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </section>
 

@@ -1,107 +1,14 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, SlidersHorizontal, Leaf, Navigation2, ChevronRight } from 'lucide-react';
+import { MapPin, SlidersHorizontal, Leaf, Navigation2, ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import type { MapItem } from '../components/MapView';
 
 const MapView = dynamic(() => import('../components/MapView'), { ssr: false });
 
-// Tempe, AZ
 const USER_LOCATION = { lat: 33.4255, lng: -111.9400 };
-
-// Arizona-based items around Tempe / Phoenix / Scottsdale / Mesa
-const MAP_ITEMS: MapItem[] = [
-  {
-    id: '1',
-    title: 'Makita Power Drill 18V',
-    category: 'Tools',
-    borrowPrice: 12,
-    resalePrice: 85,
-    co2Saved: 15.4,
-    lat: 33.4340,
-    lng: -111.9280,
-    recommendation: 'borrow',
-  },
-  {
-    id: '2',
-    title: 'Vintage Fuji Film Camera',
-    category: 'Electronics',
-    borrowPrice: 20,
-    resalePrice: 250,
-    co2Saved: 32.1,
-    lat: 33.4150,
-    lng: -111.9530,
-    recommendation: 'buy_resale',
-  },
-  {
-    id: '3',
-    title: 'Coleman Camping Tent',
-    category: 'Outdoor',
-    borrowPrice: 15,
-    resalePrice: 60,
-    co2Saved: 48.0,
-    lat: 33.4450,
-    lng: -111.9100,
-    recommendation: 'borrow',
-  },
-  {
-    id: '4',
-    title: 'KitchenAid Stand Mixer',
-    category: 'Kitchen',
-    borrowPrice: 18,
-    resalePrice: 180,
-    co2Saved: 25.2,
-    lat: 33.4380,
-    lng: -111.9600,
-    recommendation: 'borrow',
-  },
-  {
-    id: '5',
-    title: 'Yoga Mat Premium',
-    category: 'Wellness',
-    borrowPrice: 5,
-    resalePrice: 30,
-    co2Saved: 8.7,
-    lat: 33.4180,
-    lng: -111.9350,
-    recommendation: 'buy_resale',
-  },
-  {
-    id: '6',
-    title: 'Mountain Bike - Trek',
-    category: 'Sports',
-    borrowPrice: 25,
-    resalePrice: 450,
-    co2Saved: 62.5,
-    lat: 33.4510,
-    lng: -111.9450,
-    recommendation: 'borrow',
-  },
-  {
-    id: '7',
-    title: 'Standing Desk Converter',
-    category: 'Furniture',
-    borrowPrice: 10,
-    resalePrice: 120,
-    co2Saved: 18.9,
-    lat: 33.4100,
-    lng: -111.9200,
-    recommendation: 'buy_resale',
-  },
-  {
-    id: '8',
-    title: 'DJI Mini 3 Drone',
-    category: 'Electronics',
-    borrowPrice: 35,
-    resalePrice: 400,
-    co2Saved: 44.2,
-    lat: 33.4420,
-    lng: -111.9700,
-    recommendation: 'borrow',
-  },
-];
 
 function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -124,26 +31,79 @@ const listItemVariants = {
   }),
 };
 
+interface ListingItem {
+  id: string;
+  title: string;
+  category: string;
+  borrowPrice: number;
+  resalePrice: number;
+  co2Saved: number;
+  recommendation: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 export default function MapPage() {
   const [radiusKm, setRadiusKm] = useState(10);
   const [filterCategory, setFilterCategory] = useState('All');
+  const [mapItems, setMapItems] = useState<MapItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = useMemo(() => {
-    const cats = new Set(MAP_ITEMS.map((i) => i.category));
-    return ['All', ...Array.from(cats)];
+  // Fetch items from API
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const res = await fetch('/api/listings');
+        if (res.ok) {
+          const data = await res.json();
+          const items: MapItem[] = (data.listings || [])
+            .filter((item: ListingItem) => item.latitude && item.longitude)
+            .map((item: ListingItem) => ({
+              id: item.id,
+              title: item.title,
+              category: item.category,
+              borrowPrice: item.borrowPrice,
+              resalePrice: item.resalePrice,
+              co2Saved: item.co2Saved,
+              lat: item.latitude!,
+              lng: item.longitude!,
+              recommendation: item.recommendation as 'borrow' | 'buy_resale',
+            }));
+          setMapItems(items);
+        }
+      } catch (err) {
+        console.error('Failed to fetch items for map:', err);
+      }
+      setLoading(false);
+    };
+    fetchItems();
   }, []);
 
+  const categories = useMemo(() => {
+    const cats = new Set(mapItems.map((i) => i.category));
+    return ['All', ...Array.from(cats)];
+  }, [mapItems]);
+
   const filteredItems = useMemo(() => {
-    return MAP_ITEMS.map((item) => ({
-      ...item,
-      distance: getDistance(USER_LOCATION.lat, USER_LOCATION.lng, item.lat, item.lng),
-    }))
+    return mapItems
+      .map((item) => ({
+        ...item,
+        distance: getDistance(USER_LOCATION.lat, USER_LOCATION.lng, item.lat, item.lng),
+      }))
       .filter((item) => item.distance <= radiusKm)
       .filter((item) => filterCategory === 'All' || item.category === filterCategory)
       .sort((a, b) => a.distance - b.distance);
-  }, [radiusKm, filterCategory]);
+  }, [radiusKm, filterCategory, mapItems]);
 
   const totalCo2 = filteredItems.reduce((s, i) => s + i.co2Saved, 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 size={32} className="text-leaf animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -169,7 +129,7 @@ export default function MapPage() {
             </h1>
             <p className="text-sm text-earth-400 flex items-center gap-1">
               <Navigation2 size={12} />
-              Tempe, AZ
+              Tempe, AZ · {mapItems.length} items from database
             </p>
           </div>
         </div>
