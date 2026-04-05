@@ -31,7 +31,7 @@ export default function LoginPage() {
               className="flex items-center gap-3 mb-8"
             >
               <Image
-                src="/logo.png"
+                src="/logo.jpeg"
                 alt="ReEarth"
                 width={48}
                 height={48}

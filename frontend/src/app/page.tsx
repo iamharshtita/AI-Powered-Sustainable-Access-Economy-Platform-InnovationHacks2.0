@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import SearchBar from './components/SearchBar';
 import ListingCard, { ListingProps } from './components/ListingCard';
@@ -44,6 +45,7 @@ export default function Home() {
   const [listings, setListings] = useState<ListingProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const listingsRef = useRef<HTMLDivElement>(null);
 
   const fetchListings = useCallback(async (category: string, query: string) => {
     setLoading(true);
@@ -75,11 +77,21 @@ export default function Home() {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setActiveCategory('All'); // Reset category when searching
+    // Smooth scroll to listings section when a search is submitted
+    if (query.trim()) {
+      setTimeout(() => {
+        listingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
   };
 
   const handleCategoryClick = (label: string) => {
     setActiveCategory(label);
     setSearchQuery(''); // Clear search when switching categories
+    // Smooth scroll to listings section
+    setTimeout(() => {
+      listingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   };
 
   return (
@@ -102,14 +114,15 @@ export default function Home() {
           animate="show"
           className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-8 sm:pb-12 text-center"
         >
-          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-leaf/10 text-leaf-dark text-sm font-semibold mb-6 animate-border-glow border border-leaf/20">
-            <Sparkles size={14} className="animate-pulse-soft" />
+        {/* AI pill */}
+          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-leaf/15 to-ocean/10 text-leaf-dark text-sm font-bold mb-6 border border-leaf/20 shadow-sm shadow-leaf/10">
+            <Sparkles size={14} className="animate-pulse-soft text-leaf" />
             <span>AI-Powered Sustainable Living</span>
           </motion.div>
 
           <motion.h1
             variants={fadeUp}
-            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200 tracking-tight leading-[1.05] mb-5"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200 tracking-tight leading-[1.05] mb-6"
           >
             Own Less.{' '}
             <span className="gradient-text inline-block">Live More.</span>
@@ -118,17 +131,43 @@ export default function Home() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl"
             >
               Save the Planet.
             </motion.span>
           </motion.h1>
 
+          {/* Logo below heading */}
+          <motion.div
+            variants={fadeUp}
+            className="flex justify-center mb-6"
+          >
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut' }}
+              className="relative"
+            >
+              <div className="absolute -inset-3 bg-gradient-to-br from-leaf/30 via-ocean/20 to-leaf/20 rounded-full blur-2xl animate-pulse" />
+              {/* Circular crop container */}
+              <div className="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-white/80 dark:ring-white/15 shadow-2xl shadow-leaf/20">
+                <Image
+                  src="/logo.jpeg"
+                  alt="ReEarth"
+                  fill
+                  sizes="96px"
+                  className="object-cover object-center"
+                  priority
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+
           <motion.p
             variants={fadeUp}
-            className="text-base sm:text-lg text-earth-500 dark:text-earth-400 max-w-xl mx-auto mb-10 leading-relaxed"
+            className="text-base sm:text-lg text-earth-500 dark:text-earth-400 max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             AI tells you when to borrow, buy resale, or skip — so every choice helps the Earth.
-            Earn rewards for sustainable decisions.
+            <span className="font-semibold text-leaf-dark dark:text-leaf"> Earn rewards for sustainable decisions.</span>
           </motion.p>
 
           <motion.div variants={fadeUp}>
@@ -237,25 +276,41 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Listings */}
+      {/* Listings — scroll target when category is clicked */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div ref={listingsRef} className="scroll-mt-24">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="flex items-end justify-between mb-8"
+          className="flex items-end justify-between mb-10"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-heading)] text-earth dark:text-earth-200">
-            Explore Listings
-          </h2>
-          <motion.span
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+              >
+                <Sparkles size={22} className="text-leaf" />
+              </motion.div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold font-[family-name:var(--font-heading)] gradient-text tracking-tight">
+                Explore Listings
+              </h2>
+            </div>
+            <div className="h-1 w-32 bg-gradient-to-r from-leaf via-ocean to-transparent rounded-full ml-8" />
+            <p className="text-xs text-earth-400 dark:text-earth-500 ml-8 font-medium">AI-matched items near you</p>
+          </div>
+          <motion.div
             key={listings.length}
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-sm text-earth-400"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-leaf/10 to-ocean/8 rounded-full border border-leaf/15"
           >
-            {loading ? '...' : `${listings.length} items`}
-          </motion.span>
+            <div className="w-1.5 h-1.5 rounded-full bg-leaf animate-pulse" />
+            <span className="text-sm font-bold text-leaf-dark dark:text-leaf">
+              {loading ? '...' : `${listings.length} items`}
+            </span>
+          </motion.div>
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -307,6 +362,7 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>{/* end scroll anchor */}
       </section>
 
       <NudgeAlert />

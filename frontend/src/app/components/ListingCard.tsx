@@ -28,26 +28,52 @@ const CATEGORY_EMOJI: Record<string, string> = {
   books: '📚',
 };
 
-// Curated Unsplash images per category (shown when item has no image)
+const S3_BASE = 'https://sustainableaccessplatform-listingimagesbucket35876-phncghrg4bto.s3.us-east-1.amazonaws.com/items';
+
+// Curated S3 images per category (shown when item has no image)
 const CATEGORY_IMAGES: Record<string, string> = {
-  electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&q=80',
-  furniture: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80',
-  tools: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&q=80',
-  sports: 'https://images.unsplash.com/photo-1461897104016-0b3b00cc81ee?w=400&q=80',
-  outdoor: 'https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=400&q=80',
-  wellness: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&q=80',
-  kitchen: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80',
-  clothing: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&q=80',
-  books: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&q=80',
+  electronics: `${S3_BASE}/headphones.png`,
+  furniture: `${S3_BASE}/bookshelf.png`,
+  tools: `${S3_BASE}/drill.png`,
+  sports: `${S3_BASE}/bike.png`,
+  outdoor: `${S3_BASE}/tent.png`,
+  wellness: `${S3_BASE}/yogamat.png`,
+  kitchen: `${S3_BASE}/mixer.png`,
+  clothing: `${S3_BASE}/jacket.png`,
+  books: `${S3_BASE}/textbooks.png`,
 };
 
-// Specific product image overrides (for items with empty/missing image in DB)
+// Specific product image overrides (title → S3 URL)
 const TITLE_IMAGE_MAP: Record<string, string> = {
-  'DJI Mini 3 Drone': '/items/drone.png',
-  'Mountain Bike - Trek': '/items/bike.png',
-  'Yoga Mat Premium': '/items/yogamat.png',
-  'KitchenAid Stand Mixer': '/items/mixer.png',
-  'Standing Desk Converter': '/items/standingdesk.png',
+  // Original 8 items
+  'Makita Power Drill 18V': `${S3_BASE}/drill.png`,
+  'Vintage Fuji Film Camera': `${S3_BASE}/camera.png`,
+  'Coleman Camping Tent 4-Person': `${S3_BASE}/tent.png`,
+  'KitchenAid Stand Mixer': `${S3_BASE}/mixer.png`,
+  'Yoga Mat Premium': `${S3_BASE}/yogamat.png`,
+  'Mountain Bike - Trek': `${S3_BASE}/bike.png`,
+  'Standing Desk Converter': `${S3_BASE}/standingdesk.png`,
+  'DJI Mini 3 Drone': `${S3_BASE}/drone.png`,
+  // New items
+  'Hiking Backpack 65L': `${S3_BASE}/backpack.png`,
+  '5-Shelf Bookcase': `${S3_BASE}/bookshelf.png`,
+  'Cast Iron Skillet Set': `${S3_BASE}/castiron.png`,
+  'Coffee Table Books Bundle': `${S3_BASE}/coffeebooks.png`,
+  "De'Longhi Espresso Machine": `${S3_BASE}/espresso.png`,
+  'Portable BBQ Grill': `${S3_BASE}/grill.png`,
+  'Sony WH-1000XM5 Headphones': `${S3_BASE}/headphones.png`,
+  'North Face Fleece Jacket': `${S3_BASE}/jacket.png`,
+  'Sit-on-Top Kayak': `${S3_BASE}/kayak.png`,
+  'College Textbook Bundle': `${S3_BASE}/textbooks.png`,
+  'Herman Miller Aeron Chair': `${S3_BASE}/aeron-chair.jpeg`,
+  'DeWalt Circular Saw 7.25"': `${S3_BASE}/dewalt-circular-saw.jpeg`,
+  'iPad Pro + Apple Pencil': `${S3_BASE}/ipadpro-applepencil.jpeg`,
+  'Meditation Cushion + Singing Bowl Set': `${S3_BASE}/meditation-cusion-singing-bowlset.jpeg`,
+  'North Face Winter Parka': `${S3_BASE}/northface-winter-parka.jpeg`,
+  'Bluetooth Portable Projector': `${S3_BASE}/portable-bluetooth-projector.jpeg`,
+  'Pressure Washer 3000 PSI': `${S3_BASE}/pressure-washer-3000psi.jpeg`,
+  'Theragun Pro Massage Gun': `${S3_BASE}/theragun-pro-massage-gun.jpeg`,
+  'Wilson Tennis Racket Set': `${S3_BASE}/wilson-racket-set.jpeg`,
 };
 
 export default function ListingCard({ listing }: { listing: ListingProps }) {
@@ -73,8 +99,8 @@ export default function ListingCard({ listing }: { listing: ListingProps }) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
         transition={{ duration: 0.5 }}
-        whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.12)' }}
-        className="group bg-white dark:bg-[#0f1c33] rounded-2xl overflow-hidden border border-earth-200/60 dark:border-white/6 cursor-pointer transition-colors hover:border-leaf/20 dark:hover:border-leaf/30"
+        whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.13)' }}
+        className="group bg-white dark:bg-[#0f1c33] rounded-2xl overflow-hidden border border-earth-200/60 dark:border-white/6 cursor-pointer transition-all hover:border-leaf/30 dark:hover:border-leaf/25 hover:shadow-leaf/5"
       >
         {/* Image or Gradient Fallback */}
         <div className="relative aspect-[4/3] bg-earth-100 dark:bg-white/5 overflow-hidden">
@@ -98,13 +124,11 @@ export default function ListingCard({ listing }: { listing: ListingProps }) {
           )}
           {/* Hover gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-3 left-3">
-            <RecommendationBadge type={listing.recommendation} co2Saved={listing.co2Saved} />
-          </div>
+          {/* Condition badge — top right only */}
           <div className="absolute top-3 right-3">
             <motion.span
               whileHover={{ scale: 1.05 }}
-              className="text-[10px] font-medium uppercase tracking-wider bg-white/90 dark:bg-[#0f1c33]/90 backdrop-blur-sm text-earth-600 dark:text-earth-300 px-2 py-1 rounded-md"
+              className="text-[10px] font-semibold uppercase tracking-wider bg-white/95 dark:bg-[#0f1c33]/95 backdrop-blur-sm text-earth-600 dark:text-earth-300 px-2.5 py-1 rounded-full shadow-sm border border-earth-200/40 dark:border-white/10"
             >
               {listing.condition.replace('_', ' ')}
             </motion.span>
@@ -113,14 +137,18 @@ export default function ListingCard({ listing }: { listing: ListingProps }) {
 
         {/* Content */}
         <div className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-leaf-dark mb-1.5">
-            {listing.category}
-          </p>
-          <h3 className="text-lg font-bold text-earth dark:text-earth-200 leading-snug mb-4 font-[family-name:var(--font-heading)] group-hover:text-leaf-dark transition-colors duration-300">
+          {/* Category + AI Badge row */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-leaf-dark">
+              {listing.category}
+            </p>
+            <RecommendationBadge type={listing.recommendation} co2Saved={listing.co2Saved} compact />
+          </div>
+          <h3 className="text-base font-bold text-earth dark:text-earth-200 leading-snug mb-4 font-[family-name:var(--font-heading)] group-hover:text-leaf-dark dark:group-hover:text-leaf transition-colors duration-300">
             {listing.title}
           </h3>
 
-          <div className="flex items-end justify-between pt-4 border-t border-earth-100 dark:border-white/6">
+          <div className="flex items-end justify-between pt-3.5 border-t border-earth-100 dark:border-white/6">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-earth-400 mb-0.5">Borrow</p>
               <p className="text-xl font-bold text-leaf-dark">
@@ -129,9 +157,7 @@ export default function ListingCard({ listing }: { listing: ListingProps }) {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-earth-400 mb-0.5">
-                Buy Resale
-              </p>
+              <p className="text-[10px] uppercase tracking-wider text-earth-400 mb-0.5">Buy Resale</p>
               <p className="text-xl font-bold text-ocean-dark">${listing.resalePrice}</p>
             </div>
           </div>

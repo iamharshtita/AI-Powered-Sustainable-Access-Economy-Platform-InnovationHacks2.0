@@ -53,11 +53,19 @@ async function playWelcomeVoice(name: string) {
 
 export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<Auth0User | null | undefined>(undefined); // undefined = loading
+  const [user, setUser] = useState<Auth0User | null | undefined>(undefined);
   const [isDark, setIsDark] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const prevUserRef = useRef<Auth0User | null>(null);
+
+  // Detect scroll for nav shrink
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Init dark mode from localStorage
   useEffect(() => {
@@ -104,8 +112,8 @@ export default function Navigation() {
         // Play welcome greeting when user first logs in (was null, now has value)
         if (prevUserRef.current === null && userData !== null) {
           const displayName = userData?.name || userData?.nickname || userData?.email?.split('@')[0] || 'there';
-          // Small delay so page settles
-          setTimeout(() => playWelcomeVoice(displayName), 1200);
+          // Small delay so audio context is available (was 1200ms, reduced now TTS uses env fallback)
+          setTimeout(() => playWelcomeVoice(displayName), 200);
         }
         prevUserRef.current = userData;
       })
@@ -127,69 +135,109 @@ export default function Navigation() {
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="sticky top-0 z-50 bg-white/85 dark:bg-[#060d1f]/90 backdrop-blur-2xl border-b border-earth-200/40 dark:border-white/6 shadow-sm"
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-white/92 dark:bg-[#060d1f]/96 backdrop-blur-3xl shadow-[0_4px_40px_rgba(34,197,94,0.10)] dark:shadow-[0_4px_40px_rgba(34,197,94,0.06)] border-b border-leaf/10 dark:border-white/8'
+          : 'bg-white/75 dark:bg-[#060d1f]/85 backdrop-blur-2xl border-b border-earth-100/60 dark:border-white/6'
+      }`}
     >
+      {/* Animated rainbow-to-brand gradient top border */}
+      <motion.div
+        className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-leaf via-ocean to-leaf"
+        animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+        style={{ backgroundSize: '200% 200%' }}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-18">
-          {/* Logo — more prominent */}
+        <motion.div
+          animate={{ height: scrolled ? 60 : 76 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="flex items-center justify-between overflow-hidden"
+        >
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
             <motion.div
-              whileHover={{ scale: 1.12, rotate: 10 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
               className="relative"
             >
-              <div className="absolute -inset-2 bg-gradient-to-br from-leaf/30 to-ocean/20 rounded-full blur-lg group-hover:opacity-100 opacity-70 transition-opacity duration-300 animate-glow-pulse" />
-              <Image
-                src="/logo.png"
-                alt="ReEarth"
-                width={48}
-                height={48}
-                className="relative rounded-full ring-2 ring-leaf/40 group-hover:ring-leaf/70 transition-all duration-300 shadow-lg"
-                priority
+              {/* breathing glow ring */}
+              <motion.div
+                className="absolute -inset-2 bg-gradient-to-br from-leaf/50 via-ocean/30 to-leaf/40 rounded-full blur-lg"
+                animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               />
+              {/* Circular crop — works with any logo aspect ratio */}
+              <div className="relative w-[50px] h-[50px] rounded-full overflow-hidden ring-2 ring-leaf/40 group-hover:ring-leaf/80 transition-all duration-300 shadow-xl">
+                <Image
+                  src="/logo.jpeg"
+                  alt="ReEarth"
+                  fill
+                  sizes="50px"
+                  className="object-cover object-center"
+                  priority
+                />
+              </div>
             </motion.div>
-            <div className="flex flex-col leading-none">
-              <motion.span
-                initial={{ opacity: 0, x: -5 }}
+            <div className="flex flex-col leading-none gap-0.5">
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-xl font-extrabold font-[family-name:var(--font-heading)] tracking-tight gradient-text"
+                transition={{ delay: 0.3, type: 'spring', stiffness: 300 }}
+                className="text-[23px] font-extrabold tracking-tight leading-none"
               >
-                ReEarth
+                {/* Re — green matching logo */}
+                <span style={{ color: '#4CAF50' }}>Re</span>
+                {/* Earth — teal matching logo */}
+                <span style={{ background: 'linear-gradient(135deg, #2ea078 0%, #1a7a8a 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Earth</span>
+              </motion.div>
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-[9px] text-earth-400 dark:text-earth-500 font-bold tracking-[0.18em] uppercase"
+              >
+                Sustainable Access
               </motion.span>
-              <span className="text-[10px] text-earth-400 dark:text-earth-500 font-medium tracking-wide">Sustainable Access</span>
             </div>
           </Link>
 
           {/* Center Nav Links */}
-          <div className="hidden md:flex items-center gap-0.5">
+          <div className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link, i) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;
               return (
                 <motion.div
                   key={link.href}
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: -15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.06 }}
+                  transition={{ delay: 0.15 + i * 0.07, type: 'spring', stiffness: 300, damping: 20 }}
                 >
                   <Link
                     href={link.href}
                     className={`
-                      relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+                      relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 group/link
                       ${isActive
-                        ? 'text-leaf-dark dark:text-leaf'
-                        : 'text-earth-500 dark:text-earth-400 hover:text-earth dark:hover:text-earth-200 hover:bg-earth-100/50 dark:hover:bg-white/5'
+                        ? 'text-[#4CAF50] bg-leaf/8 dark:bg-leaf/12'
+                        : 'text-earth-500 dark:text-earth-400 hover:text-[#2ea078] dark:hover:text-leaf hover:bg-leaf/6 dark:hover:bg-white/6'
                       }
                     `}
                   >
-                    <Icon size={15} />
+                    <motion.span
+                      whileHover={{ scale: 1.2, rotate: 10 }}
+                      transition={{ type: 'spring', stiffness: 400 }}
+                    >
+                      <Icon size={15} className={isActive ? 'text-[#4CAF50]' : 'group-hover/link:text-[#2ea078] transition-colors'} />
+                    </motion.span>
                     {link.label}
                     {isActive && (
                       <motion.div
                         layoutId="nav-indicator"
-                        className="absolute -bottom-[9px] left-3 right-3 h-0.5 bg-leaf rounded-full"
+                        className="absolute -bottom-[13px] left-2 right-2 h-[3px] rounded-full"
+                        style={{ background: 'linear-gradient(90deg, #4CAF50, #1a8a8a, #4CAF50)' }}
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
                       />
                     )}
@@ -260,15 +308,22 @@ export default function Navigation() {
             ) : (
               <motion.a
                 href="/auth/login"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                whileHover={{ scale: 1.05 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, type: 'spring', stiffness: 300 }}
+                whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-leaf text-white text-sm font-semibold hover:bg-leaf-dark transition-colors shadow-sm shadow-leaf/20"
+                className="relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold shadow-lg shadow-leaf/25 hover:shadow-leaf/50 hover:shadow-xl transition-all duration-200 overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #2ea078 50%, #1a7a8a 100%)' }}
               >
-                <LogIn size={14} />
-                Sign In
+                {/* shimmer sweep on Sign In */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1.5, ease: 'easeInOut' }}
+                />
+                <LogIn size={14} className="relative z-10" />
+                <span className="relative z-10">Sign In</span>
               </motion.a>
             )}
           </div>
@@ -301,7 +356,7 @@ export default function Navigation() {
               </AnimatePresence>
             </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Mobile Nav */}

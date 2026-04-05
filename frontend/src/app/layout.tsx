@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   title: "ReEarth | AI-Powered Sustainable Access Economy",
   description:
     "Borrow, buy resale, and avoid unnecessary purchases through AI-driven recommendations and sustainability tracking.",
+  icons: {
+    icon: "/logo.jpeg",
+    shortcut: "/logo.jpeg",
+    apple: "/logo.jpeg",
+  },
 };
 
 export default function RootLayout({
