@@ -22,7 +22,9 @@
 
 ## 🎬 Live Demo
 
-![ReEarth Platform UI](./docs/media/user-interface.gif)
+<p align="center">
+  <img src="./docs/media/user-interface.gif" alt="ReEarth Platform Demo" width="900" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);" />
+</p>
 
 
 ---
