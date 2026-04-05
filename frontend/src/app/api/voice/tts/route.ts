@@ -15,18 +15,30 @@ let cachedApiKey: string | null = null;
 async function getElevenLabsApiKey(): Promise<string | null> {
   if (cachedApiKey) return cachedApiKey;
 
+  // Try Secrets Manager first
   try {
     const client = new SecretsManagerClient({ region: REGION });
     const response = await client.send(
       new GetSecretValueCommand({ SecretId: SECRET_NAME })
     );
     const secret = JSON.parse(response.SecretString || "{}");
-    cachedApiKey = secret.api_key || null;
-    return cachedApiKey;
+    if (secret.api_key) {
+      cachedApiKey = secret.api_key;
+      return cachedApiKey;
+    }
   } catch (err) {
-    console.error("Failed to retrieve ElevenLabs API key from Secrets Manager:", err);
-    return null;
+    console.warn("Secrets Manager unavailable, falling back to env var:", err instanceof Error ? err.message : err);
   }
+
+  // Fallback to environment variable (available in .env.local for local dev)
+  const envKey = process.env.ELEVENLABS_API_KEY;
+  if (envKey) {
+    cachedApiKey = envKey;
+    console.log("Using ELEVENLABS_API_KEY from environment");
+    return cachedApiKey;
+  }
+
+  return null;
 }
 
 /**

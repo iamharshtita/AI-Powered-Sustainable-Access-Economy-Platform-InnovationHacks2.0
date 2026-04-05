@@ -22,7 +22,7 @@ export default function AnimatedBackground() {
 
   const bgGradient = isDark
     ? 'linear-gradient(135deg, #060d1f, #0a1628, #060d1f)'
-    : 'linear-gradient(135deg, #f8fafc, #ffffff, #f8fafc)';
+    : 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 40%, #f8fafc 70%, #f0fdf9 100%)';
 
   return (
     <div
@@ -42,7 +42,7 @@ export default function AnimatedBackground() {
         style={{
           background: 'radial-gradient(circle, #22c55e 0%, #06b6d4 60%, transparent 100%)',
           filter: 'blur(80px)',
-          opacity: isDark ? 0.15 : 0.07,
+          opacity: isDark ? 0.15 : 0.18,
         }}
       />
       <div
@@ -50,7 +50,7 @@ export default function AnimatedBackground() {
         style={{
           background: 'radial-gradient(circle, #8b5cf6 0%, #06b6d4 50%, transparent 100%)',
           filter: 'blur(100px)',
-          opacity: isDark ? 0.12 : 0.06,
+          opacity: isDark ? 0.12 : 0.1,
         }}
       />
       <div
@@ -58,7 +58,7 @@ export default function AnimatedBackground() {
         style={{
           background: 'radial-gradient(circle, #f59e0b 0%, #22c55e 60%, transparent 100%)',
           filter: 'blur(90px)',
-          opacity: isDark ? 0.11 : 0.05,
+          opacity: isDark ? 0.11 : 0.09,
         }}
       />
       <div
@@ -66,7 +66,7 @@ export default function AnimatedBackground() {
         style={{
           background: 'radial-gradient(circle, #f43f5e 0%, #8b5cf6 70%, transparent 100%)',
           filter: 'blur(70px)',
-          opacity: isDark ? 0.1 : 0.05,
+          opacity: isDark ? 0.1 : 0.08,
         }}
       />
 

@@ -112,7 +112,7 @@ export default function OnboardingPage() {
       >
         <div className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-earth/10 border border-white/60 p-8 sm:p-10">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex items-center gap-3 mb-6">
-            <Image src="/logo.png" alt="ReEarth" width={40} height={40} className="rounded-full" priority />
+            <Image src="/logo.jpeg" alt="ReEarth" width={40} height={40} className="rounded-full" priority />
             <span className="text-xl font-extrabold font-[family-name:var(--font-heading)] gradient-text">ReEarth</span>
           </motion.div>
 

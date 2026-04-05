@@ -214,14 +214,31 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // ── Listing Images Bucket — public-read so the browser can display images ──
+    // Uses S3-managed encryption (AES256) instead of KMS so objects can be served
+    // publicly without requiring AWS Signature Version 4.  KMS-encrypted objects
+    // cannot be read by unauthenticated browsers even with a public bucket policy.
     this.listingImagesBucket = new s3.Bucket(this, "ListingImagesBucket", {
       bucketName: cdk.PhysicalName.GENERATE_IF_NEEDED,
-      encryption: s3.BucketEncryption.KMS,
-      encryptionKey,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED, // AES256 — browser-safe public reads
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        ignorePublicAcls: false,
+        blockPublicPolicy: false,
+        restrictPublicBuckets: false,
+      }),
+      publicReadAccess: true, // allow unauthenticated GET for browser image loading
       enforceSSL: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.HEAD],
+          allowedOrigins: ["*"],
+          allowedHeaders: ["*"],
+          maxAge: 3000,
+        },
+      ],
     });
 
     // ---------------------------------------------------------------
