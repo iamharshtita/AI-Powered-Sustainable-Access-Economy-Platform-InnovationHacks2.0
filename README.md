@@ -23,9 +23,18 @@
 ## 🎬 Live Demo
 
 <p align="center">
-  <img src="./docs/media/user-interface.gif" alt="ReEarth Platform Demo" width="900" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);" />
+  <a href="https://www.youtube.com/watch?v=1NLvmHivioI" target="_blank">
+    <img src="https://img.youtube.com/vi/1NLvmHivioI/maxresdefault.jpg"
+         alt="▶ Watch ReEarth Demo on YouTube"
+         width="900"
+         style="border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+  </a>
 </p>
-
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=1NLvmHivioI" target="_blank">
+    <img src="https://img.shields.io/badge/▶%20Watch%20Full%20Demo-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch on YouTube" />
+  </a>
+</p>
 
 ---
 
