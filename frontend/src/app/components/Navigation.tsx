@@ -3,8 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Search, BarChart3, User as UserIcon, Menu, X, LogOut, MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { Leaf, Search, BarChart3, User as UserIcon, Menu, X, LogOut, LogIn, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const NAV_LINKS = [
   { href: '/', label: 'Explore', icon: Search },
@@ -13,18 +13,46 @@ const NAV_LINKS = [
   { href: '/map', label: 'Map', icon: MapPin },
 ];
 
+interface Auth0User {
+  name?: string;
+  email?: string;
+  nickname?: string;
+}
+
 export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<Auth0User | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/auth/profile', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setUser(data ?? null);
+        // Fetch display name from DynamoDB
+        if (data?.sub) {
+          fetch(`/api/profile?user_id=${encodeURIComponent(data.sub)}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((dbData) => {
+              if (dbData?.display_name) {
+                setUser((prev: Auth0User | null) => prev ? { ...prev, name: dbData.display_name } : prev);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => setUser(null));
+  }, []);
 
   if (pathname === '/login') return null;
 
   const handleLogout = () => {
-    document.cookie = 'reearth_auth=; path=/; max-age=0';
-    router.push('/login');
-    router.refresh();
+    document.cookie = 'reearth_onboarded=; path=/; max-age=0';
+    window.location.href = '/auth/logout';
   };
+
+  const displayName = user?.name || user?.nickname || user?.email?.split('@')[0] || '';
 
   return (
     <motion.nav
@@ -101,29 +129,55 @@ export default function Navigation() {
 
           {/* Right section */}
           <div className="hidden md:flex items-center gap-2.5">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, type: 'spring', bounce: 0.3 }}
-              whileHover={{ scale: 1.05 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber/10 text-amber text-xs font-bold border border-amber/15 cursor-default"
-            >
-              <Leaf size={13} />
-              <span>2,450</span>
-            </motion.div>
+            {user ? (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5, type: 'spring', bounce: 0.3 }}
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber/10 text-amber text-xs font-bold border border-amber/15 cursor-default"
+                >
+                  <Leaf size={13} />
+                  <span>2,450</span>
+                </motion.div>
 
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleLogout}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-earth-400 hover:bg-earth-100 hover:text-earth-600 transition-colors"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </motion.button>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.55 }}
+                  className="text-sm font-medium text-earth-600 max-w-[120px] truncate"
+                >
+                  {displayName}
+                </motion.span>
+
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleLogout}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-earth-400 hover:bg-earth-100 hover:text-earth-600 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut size={16} />
+                </motion.button>
+              </>
+            ) : (
+              <motion.a
+                href="/auth/login"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-leaf text-white text-sm font-semibold hover:bg-leaf-dark transition-colors"
+              >
+                <LogIn size={14} />
+                Sign In
+              </motion.a>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -188,13 +242,24 @@ export default function Navigation() {
               })}
 
               <div className="border-t border-earth-100 pt-3 mt-2">
-                <button
-                  onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-coral hover:bg-coral/5 transition-colors w-full"
-                >
-                  <LogOut size={16} />
-                  Sign Out
-                </button>
+                {user ? (
+                  <button
+                    onClick={() => { setMobileOpen(false); handleLogout(); }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-coral hover:bg-coral/5 transition-colors w-full"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                ) : (
+                  <a
+                    href="/auth/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-leaf-dark hover:bg-leaf/5 transition-colors w-full"
+                  >
+                    <LogIn size={16} />
+                    Sign In
+                  </a>
+                )}
               </div>
             </div>
           </motion.div>

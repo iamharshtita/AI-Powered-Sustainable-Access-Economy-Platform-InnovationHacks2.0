@@ -355,11 +355,13 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         ITEMS_TABLE: this.itemsTable.tableName,
+        LISTING_IMAGES_BUCKET: this.listingImagesBucket.bucketName,
       },
     });
 
-    // Least-privilege: read/write on Items table only
+    // Least-privilege: read/write on Items table + write to listing images bucket
     this.itemsTable.grantReadWriteData(listingManagementFn);
+    this.listingImagesBucket.grantPut(listingManagementFn);
 
     const listingIntegration = new apigateway.LambdaIntegration(listingManagementFn);
 
@@ -385,6 +387,13 @@ export class SustainableAccessPlatformStack extends cdk.Stack {
 
     // GET /api/listings/{item_id} — requires authorizer
     listingItemResource.addMethod("GET", listingIntegration, {
+      authorizer: this.authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+
+    // GET /api/listings/{item_id}/upload-url — requires authorizer
+    const uploadUrlResource = listingItemResource.addResource("upload-url");
+    uploadUrlResource.addMethod("GET", listingIntegration, {
       authorizer: this.authorizer,
       authorizationType: apigateway.AuthorizationType.CUSTOM,
     });

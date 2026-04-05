@@ -43,6 +43,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return _deactivate_listing(event)
         elif resource == "/api/listings/{item_id}" and http_method == "GET":
             return _get_listing(event)
+        elif resource == "/api/listings/{item_id}/upload-url" and http_method == "GET":
+            return _get_upload_url(event)
         else:
             return error_response(ErrorCode.NOT_FOUND, f"Route not found: {http_method} {resource}")
     except Exception:
@@ -295,3 +297,72 @@ def _get_user_id(event: dict[str, Any]) -> str | None:
 
     params = event.get("queryStringParameters") or {}
     return params.get("user_id")
+
+
+# ── Presigned Upload URL ─────────────────────────────────────────────────
+
+
+def get_upload_url(user_id: str, item_id: str, filename: str) -> dict[str, Any]:
+    """Generate a presigned S3 URL for uploading a listing image.
+
+    Args:
+        user_id: The authenticated user (must own the listing).
+        item_id: The listing to attach the image to.
+        filename: The image filename (e.g. photo.jpg).
+
+    Returns:
+        Success response with upload_url and image_url.
+    """
+    import boto3
+    import os
+
+    bucket = os.environ.get("LISTING_IMAGES_BUCKET", "")
+    if not bucket:
+        return error_response(ErrorCode.SERVICE_UNAVAILABLE, "Image upload not configured")
+
+    # Verify ownership
+    table = get_dynamo_table(ITEMS_TABLE)
+    result = table.get_item(Key={"item_id": item_id})
+    item = result.get("Item")
+    if not item:
+        return error_response(ErrorCode.NOT_FOUND, "Listing not found")
+    if item.get("owner_id") != user_id:
+        return error_response(ErrorCode.FORBIDDEN, "You can only upload images for your own listings")
+
+    s3_key = f"items/{item_id}/{filename}"
+    s3 = boto3.client("s3")
+    upload_url = s3.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": bucket, "Key": s3_key, "ContentType": "image/*"},
+        ExpiresIn=300,  # 5 minutes
+    )
+
+    image_url = f"https://{bucket}.s3.us-east-1.amazonaws.com/{s3_key}"
+
+    # Update the item's image_url in DynamoDB
+    table.update_item(
+        Key={"item_id": item_id},
+        UpdateExpression="SET image_url = :url, updated_at = :ua",
+        ExpressionAttributeValues={
+            ":url": image_url,
+            ":ua": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+    return success_response({"upload_url": upload_url, "image_url": image_url})
+
+
+def _get_upload_url(event: dict[str, Any]) -> dict[str, Any]:
+    """API Gateway handler for GET /api/listings/{item_id}/upload-url."""
+    user_id = _get_user_id(event)
+    if not user_id:
+        return error_response(ErrorCode.UNAUTHORIZED, "Missing user identity")
+
+    item_id = (event.get("pathParameters") or {}).get("item_id")
+    if not item_id:
+        return error_response(ErrorCode.VALIDATION_ERROR, "Missing item_id in path")
+
+    params = event.get("queryStringParameters") or {}
+    filename = params.get("filename", "image.jpg")
+
+    return get_upload_url(user_id, item_id, filename)
