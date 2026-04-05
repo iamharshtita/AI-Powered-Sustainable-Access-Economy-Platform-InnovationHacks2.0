@@ -1,43 +1,10 @@
 'use client';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, LogIn, UserPlus, AlertCircle, Sparkles, Leaf, ArrowRight } from 'lucide-react';
+import { LogIn, UserPlus, Leaf, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 import FallingLeaves from '../components/FallingLeaves';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'signin' | 'create'>('signin');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    await new Promise((r) => setTimeout(r, 800));
-
-    if (username === 'user-test' && password === 'password-test') {
-      // Set auth cookie
-      document.cookie = 'reearth_auth=true; path=/; max-age=86400';
-      router.push('/');
-      router.refresh();
-    } else {
-      setError('Invalid credentials. Try user-test / password-test');
-      setIsLoading(false);
-    }
-  };
-
-  const fillTestCredentials = () => {
-    setUsername('user-test');
-    setPassword('password-test');
-  };
-
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-earth-50">
       <FallingLeaves count={20} />
@@ -54,7 +21,7 @@ export default function LoginPage() {
         className="relative z-10 w-full max-w-[920px] mx-4"
       >
         <div className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-earth/10 border border-white/60 overflow-hidden grid grid-cols-1 lg:grid-cols-2">
-          {/* Left — Form */}
+          {/* Left — Auth */}
           <div className="p-8 sm:p-10">
             {/* Logo */}
             <motion.div
@@ -76,139 +43,60 @@ export default function LoginPage() {
               </span>
             </motion.div>
 
-            {/* Tabs */}
-            <div className="flex bg-earth-100 rounded-xl p-1 mb-6">
-              <button
-                onClick={() => setActiveTab('signin')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === 'signin'
-                    ? 'bg-white text-earth shadow-sm'
-                    : 'text-earth-400 hover:text-earth-600'
-                }`}
-              >
-                <LogIn size={15} />
-                Sign In
-              </button>
-              <button
-                onClick={() => setActiveTab('create')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === 'create'
-                    ? 'bg-white text-earth shadow-sm'
-                    : 'text-earth-400 hover:text-earth-600'
-                }`}
-              >
-                <UserPlus size={15} />
-                Create Account
-              </button>
-            </div>
-
             {/* Title */}
             <h1 className="text-2xl font-bold font-[family-name:var(--font-heading)] text-earth mb-1">
               Welcome back
             </h1>
-            <p className="text-sm text-earth-400 mb-6">
+            <p className="text-sm text-earth-400 mb-8">
               Sign in to continue your sustainable journey
             </p>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-semibold text-earth-600 mb-1.5">
-                  Username
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-earth-400">
-                    <UserPlus size={16} />
-                  </span>
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    required
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-earth-50 border border-earth-200 text-earth placeholder:text-earth-400 text-sm outline-none focus:border-leaf/50 focus:ring-4 focus:ring-leaf/10 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-earth-600 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-earth-400">
-                    <LogIn size={16} />
-                  </span>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="w-full pl-10 pr-12 py-3 rounded-xl bg-earth-50 border border-earth-200 text-earth placeholder:text-earth-400 text-sm outline-none focus:border-leaf/50 focus:ring-4 focus:ring-leaf/10 transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-earth-400 hover:text-earth-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex items-center gap-2 text-coral text-sm bg-coral/5 border border-coral/20 rounded-xl px-4 py-2.5"
-                  >
-                    <AlertCircle size={15} className="shrink-0" />
-                    <span>{error}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <motion.button
-                type="submit"
-                disabled={isLoading}
+            {/* Auth buttons */}
+            <div className="space-y-3">
+              <motion.a
+                href="/auth/login"
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-leaf to-leaf-dark text-white text-sm font-bold shadow-lg shadow-leaf/25 hover:shadow-xl hover:shadow-leaf/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-leaf to-leaf-dark text-white text-sm font-bold shadow-lg shadow-leaf/25 hover:shadow-xl hover:shadow-leaf/30 transition-all"
               >
-                {isLoading ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                    className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
-                  />
-                ) : (
-                  <>
-                    Sign In <ArrowRight size={16} />
-                  </>
-                )}
-              </motion.button>
-            </form>
+                <LogIn size={16} />
+                Sign In
+                <ArrowRight size={16} />
+              </motion.a>
+
+              <motion.a
+                href="/auth/login?screen_hint=signup"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-leaf/20 text-leaf-dark text-sm font-semibold hover:bg-leaf/5 transition-colors"
+              >
+                <UserPlus size={16} />
+                Create Account
+              </motion.a>
+            </div>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
+            <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-earth-200" />
-              <span className="text-xs text-earth-400">or</span>
+              <span className="text-xs text-earth-400">secure authentication</span>
               <div className="flex-1 h-px bg-earth-200" />
             </div>
 
-            {/* Quick fill */}
-            <button
-              onClick={fillTestCredentials}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-leaf/20 text-leaf-dark text-sm font-semibold hover:bg-leaf/5 transition-colors"
-            >
-              <Sparkles size={15} />
-              Use test credentials
-            </button>
+            {/* Trust badges */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-earth-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-leaf" />
+                Auth0 Secured
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={14} className="text-amber" />
+                Google Sign-In
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Leaf size={14} className="text-ocean" />
+                MFA Enabled
+              </span>
+            </div>
           </div>
 
           {/* Right — Marketing Panel */}

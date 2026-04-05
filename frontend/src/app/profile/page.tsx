@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, ShieldCheck, Leaf, Star, Calendar, ChevronRight,
-  PackageOpen, Bell, Settings, LogOut, Award
+  PackageOpen, Bell, Settings, LogOut, Award, LogIn
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -30,15 +30,79 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 };
 
+interface Auth0User {
+  name?: string;
+  email?: string;
+  picture?: string;
+  sub?: string;
+  nickname?: string;
+}
+
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Reward History');
+  const [user, setUser] = useState<Auth0User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dbProfile, setDbProfile] = useState<Record<string, string | number> | null>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    fetch('/auth/profile', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setUser(data ?? null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!user?.sub) return;
+    fetch(`/api/profile?user_id=${encodeURIComponent(user.sub)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setDbProfile(data);
+        }
+      })
+      .catch(() => {});
+  }, [user?.sub]);
+
   const handleLogout = () => {
-    document.cookie = 'reearth_auth=; path=/; max-age=0';
-    router.push('/login');
-    router.refresh();
+    document.cookie = 'reearth_onboarded=; path=/; max-age=0';
+    window.location.href = '/auth/logout';
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          className="w-8 h-8 border-3 border-leaf/20 border-t-leaf rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <User size={48} className="text-earth-300" />
+        <h2 className="text-xl font-bold text-earth">Not signed in</h2>
+        <p className="text-earth-400 text-sm">Sign in to view your profile</p>
+        <a
+          href="/auth/login"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-leaf to-leaf-dark text-white text-sm font-bold shadow-lg shadow-leaf/25 hover:shadow-xl transition-all"
+        >
+          <LogIn size={16} />
+          Sign In
+        </a>
+      </div>
+    );
+  }
+
+  const displayName = user.name || user.nickname || user.email || 'User';
+  const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
@@ -57,16 +121,22 @@ export default function ProfilePage() {
               transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }}
               className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-leaf to-ocean flex items-center justify-center shrink-0"
             >
-              <span className="text-2xl sm:text-3xl font-bold text-white">A</span>
+              <span className="text-2xl sm:text-3xl font-bold text-white">{initials}</span>
             </motion.div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold font-[family-name:var(--font-heading)] text-earth">
-                Alex Rivera
+                {(dbProfile?.display_name as string) || displayName}
               </h1>
               <p className="text-earth-500 text-sm flex items-center gap-1.5 mt-0.5">
                 <Calendar size={13} />
-                Member since June 2025
+                {user.email || 'Member'}
               </p>
+              {dbProfile?.address && (
+                <p className="text-earth-400 text-xs mt-1">📍 {dbProfile.address as string}</p>
+              )}
+              {dbProfile?.phone_number && (
+                <p className="text-earth-400 text-xs mt-0.5">📞 {dbProfile.phone_number as string}</p>
+              )}
             </div>
           </div>
 

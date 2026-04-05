@@ -3,6 +3,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Navigation from "./components/Navigation";
 import ClientLeaves from "./components/ClientLeaves";
+import OnboardingGuard from "./components/OnboardingGuard";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
       <body className="bg-earth-50 text-earth antialiased min-h-screen relative overflow-x-hidden" suppressHydrationWarning>
         <ClientLeaves />
+        <OnboardingGuard />
         <Navigation />
         <main className="relative z-10">{children}</main>
       </body>

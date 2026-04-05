@@ -134,7 +134,7 @@ class TestAuthCallback:
         event = _api_event("POST", "/api/auth/callback", body={"user_id": "u1"})
         resp = handler(event, None)
         assert resp["statusCode"] == 200
-        assert "already exists" in json.loads(resp["body"])["message"]
+        assert "updated" in json.loads(resp["body"])["message"].lower()
 
     @patch("auth_trust.handler.get_dynamo_table")
     def test_missing_user_id_returns_400(self, mock_get_table):

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import logging
+from decimal import Decimal
 from typing import Any
 
 from shared.response import success_response, error_response, ErrorCode
@@ -68,14 +69,39 @@ def _auth_callback(event: dict[str, Any]) -> dict[str, Any]:
     # Check if user already exists
     existing = table.get_item(Key={"user_id": user_id}).get("Item")
     if existing:
-        return success_response({"user_id": user_id, "message": "User already exists"})
+        # Update existing user with any new fields
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        update_parts = ["updated_at = :ua"]
+        attr_values: dict[str, Any] = {":ua": now}
+
+        display_name = body.get("display_name")
+        if display_name:
+            update_parts.append("display_name = :dn")
+            attr_values[":dn"] = display_name
+        address = body.get("address")
+        if address:
+            update_parts.append("address = :addr")
+            attr_values[":addr"] = address
+        phone_number = body.get("phone_number")
+        if phone_number:
+            update_parts.append("phone_number = :ph")
+            attr_values[":ph"] = phone_number
+
+        if len(update_parts) > 1:
+            table.update_item(
+                Key={"user_id": user_id},
+                UpdateExpression="SET " + ", ".join(update_parts),
+                ExpressionAttributeValues=attr_values,
+            )
+        return success_response({"user_id": user_id, "message": "User updated"})
 
     from datetime import datetime, timezone
 
     now = datetime.now(timezone.utc).isoformat()
     item: dict[str, Any] = {
         "user_id": user_id,
-        "trust_score": TRUST_SCORE_DEFAULT,
+        "trust_score": Decimal(str(TRUST_SCORE_DEFAULT)),
         "reward_points": 0,
         "created_at": now,
         "updated_at": now,
@@ -85,6 +111,12 @@ def _auth_callback(event: dict[str, Any]) -> dict[str, Any]:
     display_name = body.get("display_name")
     if display_name:
         item["display_name"] = display_name
+    address = body.get("address")
+    if address:
+        item["address"] = address
+    phone_number = body.get("phone_number")
+    if phone_number:
+        item["phone_number"] = phone_number
 
     table.put_item(Item=item)
     return success_response({"user_id": user_id, "message": "User created"}, status_code=201)
@@ -111,6 +143,9 @@ def get_profile(user_id: str) -> dict[str, Any]:
     return success_response({
         "user_id": item["user_id"],
         "display_name": item.get("display_name", ""),
+        "email": item.get("email", ""),
+        "address": item.get("address", ""),
+        "phone_number": item.get("phone_number", ""),
         "trust_score": float(item.get("trust_score", TRUST_SCORE_DEFAULT)),
         "reward_points": int(item.get("reward_points", 0)),
         "created_at": item.get("created_at", ""),
