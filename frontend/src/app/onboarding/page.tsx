@@ -35,8 +35,24 @@ export default function OnboardingPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) { router.push('/login'); return; }
-        setUser(data);
-        if (data.name) setName(data.name);
+        // Check if user already has a DynamoDB profile (returning user)
+        fetch(`/api/profile?user_id=${encodeURIComponent(data.sub)}`)
+          .then((res) => {
+            if (res.ok) {
+              // Already onboarded — set cookie and go home
+              document.cookie = 'reearth_onboarded=true; path=/; max-age=2592000';
+              router.push('/');
+              return;
+            }
+            // New user — show onboarding form
+            setUser(data);
+            if (data.name) setName(data.name);
+          })
+          .catch(() => {
+            // DynamoDB check failed — show onboarding form anyway
+            setUser(data);
+            if (data.name) setName(data.name);
+          });
       })
       .catch(() => router.push('/login'));
   }, [router]);
